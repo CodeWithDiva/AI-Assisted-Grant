@@ -1,0 +1,463 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+// Connection URL lives in prisma.config.ts (Prisma 7).
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums (keep in sync with packages/shared/src/enums.ts) ───────────────────
+
+enum PlatformRole {
+  USER
+  ADMIN
+}
+
+enum OrganizationType {
+  NONPROFIT
+  STARTUP
+  OTHER
+}
+
+enum OrgRole {
+  OWNER
+  EDITOR
+  VIEWER
+}
+
+enum DocumentKind {
+  PAST_PROPOSAL
+  REPORT
+  RFP
+  OTHER
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
+enum ProposalStatus {
+  DRAFT
+  IN_REVIEW
+  SUBMITTED
+  AWARDED
+  REJECTED
+}
+
+enum SectionStatus {
+  NOT_STARTED
+  DRAFT
+  COMPLETE
+}
+
+enum SectionSource {
+  AI
+  USER
+}
+
+enum DeadlineType {
+  LOI
+  FULL_PROPOSAL
+  REPORT
+  OTHER
+}
+
+enum ExportFormat {
+  DOCX
+  PDF
+}
+
+enum AiGenerationKind {
+  TEMPLATE_EXTRACTION
+  SECTION_DRAFT
+  SECTION_REFINE
+  COMPLIANCE_REVIEW
+  FIT_SCORE
+}
+
+enum AiGenerationStatus {
+  SUCCESS
+  FAILED
+}
+
+// ─── Users & auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id              String       @id @default(cuid())
+  email           String       @unique
+  passwordHash    String? // null for OAuth-only accounts
+  name            String
+  platformRole    PlatformRole @default(USER)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  memberships       Membership[]
+  refreshTokens     RefreshToken[]
+  invitationsSent   Invitation[]
+  documentsUploaded Document[]
+  proposalsOwned    Proposal[]
+  notifications     Notification[]
+  aiGenerations     AiGeneration[]
+  exports           Export[]
+  auditLogs         AuditLog[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// ─── Organizations ────────────────────────────────────────────────────────────
+
+model Organization {
+  id        String           @id @default(cuid())
+  name      String
+  type      OrganizationType
+  country   String?
+  website   String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  memberships     Membership[]
+  invitations     Invitation[]
+  profile         OrgProfile?
+  documents       Document[]
+  funders         Funder[]
+  funderTemplates FunderTemplate[]
+  proposals       Proposal[]
+  deadlines       Deadline[]
+  aiGenerations   AiGeneration[]
+  auditLogs       AuditLog[]
+
+  @@map("organizations")
+}
+
+model Membership {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole  @default(EDITOR)
+  createdAt      DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
+}
+
+model Invitation {
+  id             String    @id @default(cuid())
+  organizationId String
+  email          String
+  role           OrgRole
+  tokenHash      String    @unique
+  invitedById    String
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invitedBy    User         @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("invitations")
+}
+
+// ─── Knowledge base ───────────────────────────────────────────────────────────
+
+model OrgProfile {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  mission        String?
+  vision         String?
+  programs       Json? // [{ name, description, beneficiaries, outcomes }]
+  beneficiaries  String?
+  annualBudget   Decimal? @db.Decimal(14, 2)
+  currency       String   @default("USD")
+  teamSummary    String?
+  pastResults    Json? // [{ title, year, metric, value }]
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("org_profiles")
+}
+
+model Document {
+  id             String           @id @default(cuid())
+  organizationId String
+  uploadedById   String?
+  kind           DocumentKind
+  fileKey        String
+  fileName       String
+  mimeType       String
+  sizeBytes      Int
+  extractedText  String?
+  status         ProcessingStatus @default(PENDING)
+  createdAt      DateTime         @default(now())
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  uploadedBy      User?            @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  funderTemplates FunderTemplate[]
+
+  @@index([organizationId])
+  @@map("documents")
+}
+
+// ─── Funders & templates ──────────────────────────────────────────────────────
+
+model Funder {
+  id             String   @id @default(cuid())
+  organizationId String? // null = global library funder
+  name           String
+  website        String?
+  description    String?
+  focusAreas     String[]
+  geography      String[]
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  templates    FunderTemplate[]
+
+  @@index([organizationId])
+  @@map("funders")
+}
+
+model FunderTemplate {
+  id                 String   @id @default(cuid())
+  organizationId     String? // null = global library template
+  funderId           String?
+  sourceDocumentId   String?
+  name               String
+  description        String?
+  eligibility        Json? // string[]
+  evaluationCriteria Json? // [{ name, weight, description }]
+  amountMin          Decimal? @db.Decimal(14, 2)
+  amountMax          Decimal? @db.Decimal(14, 2)
+  currency           String   @default("USD")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  organization   Organization?     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  funder         Funder?           @relation(fields: [funderId], references: [id], onDelete: SetNull)
+  sourceDocument Document?         @relation(fields: [sourceDocumentId], references: [id], onDelete: SetNull)
+  sections       TemplateSection[]
+  proposals      Proposal[]
+  deadlines      Deadline[]
+
+  @@index([organizationId])
+  @@map("funder_templates")
+}
+
+model TemplateSection {
+  id           String  @id @default(cuid())
+  templateId   String
+  order        Int
+  title        String
+  instructions String?
+  wordLimit    Int?
+  charLimit    Int?
+  required     Boolean @default(true)
+
+  template         FunderTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  proposalSections ProposalSection[]
+
+  @@index([templateId, order])
+  @@map("template_sections")
+}
+
+// ─── Proposals ────────────────────────────────────────────────────────────────
+
+model Proposal {
+  id              String         @id @default(cuid())
+  organizationId  String
+  templateId      String?
+  ownerId         String?
+  title           String
+  status          ProposalStatus @default(DRAFT)
+  requestedAmount Decimal?       @db.Decimal(14, 2)
+  currency        String         @default("USD")
+  fitScore        Int?
+  submittedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template     FunderTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  owner        User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  sections     ProposalSection[]
+  deadlines    Deadline[]
+  exports      Export[]
+
+  @@index([organizationId, status])
+  @@map("proposals")
+}
+
+// Section fields are copied from the template so a proposal survives template edits/deletes.
+model ProposalSection {
+  id                String        @id @default(cuid())
+  proposalId        String
+  templateSectionId String?
+  order             Int
+  title             String
+  instructions      String?
+  wordLimit         Int?
+  charLimit         Int?
+  content           Json? // TipTap document
+  wordCount         Int           @default(0)
+  status            SectionStatus @default(NOT_STARTED)
+  updatedAt         DateTime      @updatedAt
+
+  proposal        Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  templateSection TemplateSection? @relation(fields: [templateSectionId], references: [id], onDelete: SetNull)
+  versions        SectionVersion[]
+
+  @@index([proposalId, order])
+  @@map("proposal_sections")
+}
+
+model SectionVersion {
+  id                String        @id @default(cuid())
+  proposalSectionId String
+  content           Json
+  source            SectionSource
+  aiGenerationId    String?
+  createdAt         DateTime      @default(now())
+
+  proposalSection ProposalSection @relation(fields: [proposalSectionId], references: [id], onDelete: Cascade)
+  aiGeneration    AiGeneration?   @relation(fields: [aiGenerationId], references: [id], onDelete: SetNull)
+
+  @@index([proposalSectionId, createdAt])
+  @@map("section_versions")
+}
+
+// ─── Deadlines & notifications ────────────────────────────────────────────────
+
+model Deadline {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  proposalId          String?
+  templateId          String?
+  type                DeadlineType
+  title               String
+  dueAt               DateTime
+  timezone            String       @default("UTC")
+  reminderOffsetsDays Int[]        @default([14, 7, 3, 1])
+  completedAt         DateTime?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  proposal     Proposal?          @relation(fields: [proposalId], references: [id], onDelete: SetNull)
+  template     FunderTemplate?    @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  reminders    DeadlineReminder[]
+
+  @@index([organizationId, dueAt])
+  @@index([dueAt])
+  @@map("deadlines")
+}
+
+// One row per reminder sent, so the daily job never emails the same reminder twice.
+model DeadlineReminder {
+  id         String   @id @default(cuid())
+  deadlineId String
+  offsetDays Int
+  sentAt     DateTime @default(now())
+
+  deadline Deadline @relation(fields: [deadlineId], references: [id], onDelete: Cascade)
+
+  @@unique([deadlineId, offsetDays])
+  @@map("deadline_reminders")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  type      String
+  payload   Json
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+// ─── AI usage, exports, audit ─────────────────────────────────────────────────
+
+model AiGeneration {
+  id             String             @id @default(cuid())
+  organizationId String
+  userId         String?
+  kind           AiGenerationKind
+  model          String
+  promptVersion  String
+  inputTokens    Int                @default(0)
+  outputTokens   Int                @default(0)
+  latencyMs      Int?
+  status         AiGenerationStatus
+  errorMessage   String?
+  createdAt      DateTime           @default(now())
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User?            @relation(fields: [userId], references: [id], onDelete: SetNull)
+  sectionVersions SectionVersion[]
+
+  @@index([organizationId, createdAt])
+  @@map("ai_generations")
+}
+
+model Export {
+  id          String           @id @default(cuid())
+  proposalId  String
+  createdById String?
+  format      ExportFormat
+  fileKey     String?
+  status      ProcessingStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+
+  proposal  Proposal @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  createdBy User?    @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([proposalId])
+  @@map("exports")
+}
+
+model AuditLog {
+  id             String   @id @default(cuid())
+  organizationId String?
+  userId         String?
+  action         String
+  entity         String
+  entityId       String?
+  metadata       Json?
+  createdAt      DateTime @default(now())
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
+}

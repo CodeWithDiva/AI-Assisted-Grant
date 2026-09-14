@@ -1,0 +1,19 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# Dependencies allowed to run install scripts (pnpm blocks them by default)
+allowBuilds:
+  esbuild: true
+  prisma: true
+  '@prisma/engines': true
+  '@prisma/client': true
+  '@tailwindcss/oxide': true
+  '@nestjs/core': false
+  msgpackr-extract: false
+  workerd: false
+
+# Flaky network: retry downloads instead of failing the install
+fetchRetries: 5
+fetchRetryMintimeout: 10000
+fetchRetryMaxtimeout: 60000

@@ -1,0 +1,23 @@
+# dependencies
+node_modules/
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+apps/api/src/generated/
+
+# env
+.env
+.env.*
+!.env.example
+
+# local file storage
+uploads/
+
+# logs & tooling
+*.log
+coverage/
+.DS_Store
+.vscode/*
+!.vscode/extensions.json

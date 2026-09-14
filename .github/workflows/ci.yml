@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/grant_platform?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format:check
+      - run: pnpm db:generate
+      - run: pnpm --filter @grant/shared build
+      - run: pnpm typecheck
+      - run: pnpm build
+
+  docker-api:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API image
+        run: docker build -f infra/docker/api.Dockerfile -t grant-api:ci .
