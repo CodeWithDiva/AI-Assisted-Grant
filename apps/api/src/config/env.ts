@@ -12,9 +12,11 @@ const envSchema = z.object({
   JWT_REFRESH_SECRET: z.string().min(1),
 
   ANTHROPIC_API_KEY: z.string().optional(),
+  ANTHROPIC_MODEL: z.string().default('claude-opus-5'),
 
   STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
   UPLOAD_DIR: z.string().default('./uploads'),
+  MAX_UPLOAD_MB: z.coerce.number().int().positive().default(20),
 
   EMAIL_DRIVER: z.enum(['console', 'resend']).default('console'),
   RESEND_API_KEY: z.string().optional(),

@@ -23,6 +23,7 @@ infra/docker/ Dockerfiles (built by GitHub Actions, not needed locally)
 - PostgreSQL 16+ running locally
 - Upstash Redis URL (free tier), needed once background jobs are added
 - Docker is **not** required for local development
+- Anthropic API key - only for AI features; without it the app runs and AI endpoints answer `503`
 
 ## Setup
 

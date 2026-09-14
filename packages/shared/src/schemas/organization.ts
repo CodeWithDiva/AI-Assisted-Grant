@@ -9,6 +9,9 @@ export const createOrganizationSchema = z.object({
 });
 export type CreateOrganizationInput = z.infer<typeof createOrganizationSchema>;
 
+export const updateOrganizationSchema = createOrganizationSchema.partial();
+export type UpdateOrganizationInput = z.infer<typeof updateOrganizationSchema>;
+
 export const inviteMemberSchema = z.object({
   email: z.email(),
   role: z.enum(OrgRole),

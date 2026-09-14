@@ -10,9 +10,9 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 |-------|--------|
 | Day 1 — Requirements and scope freeze | 🟡 Plan ready; client questions (§12) pending |
 | Day 2 — Architecture and setup | 🟡 Monorepo, web/api/shared skeletons, CI, Dockerfile done; web and api build, `/health` verified; staging deploy pending |
-| Day 3 — Database, auth, RBAC | 🟡 Prisma 7 schema, client generation and template seed ready; first migration waits on local DB password; auth and RBAC pending |
-| Day 4 — UI foundation and wireframes | ⚪ Not started |
-| Day 5 — Org profile and AI layer | ⚪ Not started |
+| Day 3 — Database, auth, RBAC | ✅ Migration applied, templates seeded; JWT auth, organizations, invitations and role guards verified end to end |
+| Day 4 — UI foundation and wireframes | 🟡 App shell, nav, sign-in/sign-up pages, protected routes and organization screen done; remaining screens pending |
+| Day 5 — Org profile and AI layer | 🟡 Profile CRUD, document upload with PDF/DOCX text extraction, storage service and Claude AI layer (text + structured JSON, usage logging) built; needs ANTHROPIC_API_KEY to run live |
 | Day 6 — Funder templates | ⚪ Not started |
 | Day 7 — AI proposal drafting (midpoint demo) | ⚪ Not started |
 | Day 8 — AI refinement and compliance | ⚪ Not started |
@@ -110,7 +110,7 @@ Sign up → Create org → Complete profile → Upload RFP → Review extracted 
 | ORM / validation | **Prisma** + Zod | Fast migrations, type safety |
 | Database | **PostgreSQL** | Core data (pgvector can be added in Phase 2) |
 | Cache / queue | **Redis + BullMQ** (Upstash free tier in development, no local install) | Caching, rate limiting, and background jobs (AI generation, RFP parsing, exports, reminders) |
-| AI | **Claude API** — `claude-sonnet-5` for drafting and review, `claude-haiku-4-5-20251001` for extraction and small tasks | Long context fits the org profile and RFP in one prompt; structured output via tool use. Kept behind a provider interface so it can be swapped. |
+| AI | **Claude API** — `claude-opus-5` by default (override with `ANTHROPIC_MODEL`) | Long context fits the org profile and RFP in one prompt; structured output via tool use. Kept behind a provider interface so it can be swapped. |
 | File parsing | `pdf-parse` / `unpdf` (PDF), `mammoth` (DOCX) | |
 | Export | `docx` (DOCX), Puppeteer or Gotenberg (HTML → PDF) | |
 | Storage | **AWS S3** (local `uploads/` folder in development, behind a storage interface) | Uploads and exports, served with signed URLs |
