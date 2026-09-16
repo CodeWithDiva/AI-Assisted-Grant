@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
+import type { Env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
+import { deadlineReminderEmail } from '../email/email-templates';
 import { EmailService } from '../email/email.service';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -13,6 +16,7 @@ export class RemindersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   /** Runs every morning; each reminder is recorded so it is never sent twice. */
@@ -62,25 +66,17 @@ export class RemindersService {
         .map((membership) => membership.user.email)
         .filter(Boolean);
 
-      const when =
-        daysRemaining < 0
-          ? `was due ${Math.abs(daysRemaining)} day(s) ago`
-          : daysRemaining === 0
-            ? 'is due today'
-            : `is due in ${daysRemaining} day(s)`;
+      const message = deadlineReminderEmail({
+        organizationName: deadline.organization.name,
+        deadlineTitle: deadline.title,
+        proposalTitle: deadline.proposal?.title ?? null,
+        dueAt: deadline.dueAt,
+        timezone: deadline.timezone,
+        daysRemaining,
+        appUrl: this.config.get('WEB_ORIGIN', { infer: true }),
+      });
 
-      const subject = `Deadline reminder: ${deadline.title} ${when}`;
-      const body = [
-        `${deadline.organization.name} — ${deadline.title}`,
-        deadline.proposal ? `Proposal: ${deadline.proposal.title}` : null,
-        `Due: ${deadline.dueAt.toISOString().slice(0, 10)} (${deadline.timezone})`,
-        '',
-        'Open GrantPilot to finish and submit it.',
-      ]
-        .filter(Boolean)
-        .join('\n');
-
-      const delivered = await this.email.send({ to: recipients, subject, text: body });
+      const delivered = await this.email.send({ to: recipients, ...message });
       if (!delivered) continue;
 
       await this.prisma.$transaction([

@@ -21,3 +21,10 @@ coverage/
 .DS_Store
 .vscode/*
 !.vscode/extensions.json
+
+# development email previews
+.email-previews/
+
+# playwright
+apps/e2e/test-results/
+apps/e2e/playwright-report/

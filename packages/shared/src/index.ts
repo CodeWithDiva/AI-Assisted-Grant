@@ -1,4 +1,5 @@
 export * from './enums';
+export * from './rich-text';
 export * from './schemas/auth';
 export * from './schemas/deadline';
 export * from './schemas/organization';

@@ -1,4 +1,9 @@
-import { ProposalStatus, RefineAction, type ProposalSectionView } from '@grant/shared';
+import {
+  countWords,
+  ProposalStatus,
+  RefineAction,
+  type ProposalSectionView,
+} from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ClipboardCheck } from 'lucide-react';
@@ -17,6 +22,7 @@ import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { proposalsApi } from './api';
 import { CompliancePanel } from './CompliancePanel';
 import { ExportButtons } from './ExportButtons';
+import { applyFormat, FormattingToolbar, RichPreview } from './Formatting';
 import { statusLabels, statusTones } from './status';
 
 const refineLabels: Record<RefineAction, string> = {
@@ -26,10 +32,6 @@ const refineLabels: Record<RefineAction, string> = {
   TONE_PLAIN: 'Plainer',
   CUSTOM: 'Custom',
 };
-
-function countWords(text: string): number {
-  return text.trim() ? text.trim().split(/\s+/).length : 0;
-}
 
 export function ProposalEditorPage() {
   const { proposalId = '' } = useParams();
@@ -43,7 +45,9 @@ export function ProposalEditorPage() {
   const [streaming, setStreaming] = useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [showCompliance, setShowCompliance] = useState(false);
+  const [preview, setPreview] = useState(false);
   const dirty = useRef(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const proposal = useQuery({
     queryKey: ['proposals', orgId, proposalId],
@@ -310,16 +314,46 @@ export function ProposalEditorPage() {
 
             <Alert>{generate.error?.message ?? refine.error?.message ?? save.error?.message}</Alert>
 
-            <textarea
-              value={text}
-              readOnly={busy}
-              onChange={(event) => {
+            <FormattingToolbar
+              textareaRef={textareaRef}
+              text={text}
+              disabled={busy}
+              preview={preview}
+              onPreviewChange={setPreview}
+              onChange={(value) => {
                 dirty.current = true;
-                setText(event.target.value);
+                setText(value);
               }}
-              placeholder="Write here, or let the AI draft it first."
-              className="min-h-[340px] w-full resize-y bg-surface px-6 py-5 font-display text-[16.5px] leading-[1.75] text-ink-900 placeholder:text-ink-300 focus:outline-none"
             />
+
+            {preview ? (
+              <RichPreview text={text} />
+            ) : (
+              <textarea
+                ref={textareaRef}
+                value={text}
+                readOnly={busy}
+                onChange={(event) => {
+                  dirty.current = true;
+                  setText(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (!(event.ctrlKey || event.metaKey) || busy) return;
+                  const kind = event.key === 'b' ? 'bold' : event.key === 'i' ? 'italic' : null;
+                  if (!kind) return;
+                  event.preventDefault();
+                  const area = event.currentTarget;
+                  const edit = applyFormat(text, area.selectionStart, area.selectionEnd, kind);
+                  dirty.current = true;
+                  setText(edit.text);
+                  requestAnimationFrame(() =>
+                    area.setSelectionRange(edit.selectionStart, edit.selectionEnd),
+                  );
+                }}
+                placeholder="Write here, or let the AI draft it first. **bold**, *italic*, and lines starting with - or 1. become lists."
+                className="min-h-[340px] w-full resize-y bg-surface px-6 py-5 font-display text-[16.5px] leading-[1.75] text-ink-900 placeholder:text-ink-300 focus:outline-none"
+              />
+            )}
 
             <div className="flex flex-wrap items-center gap-4 border-t border-line px-6 py-3">
               <div className="min-w-[160px] flex-1">

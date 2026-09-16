@@ -3,3 +3,6 @@ docs
 **/dist
 **/src/generated
 **/prisma/migrations
+**/.email-previews
+**/test-results
+**/playwright-report

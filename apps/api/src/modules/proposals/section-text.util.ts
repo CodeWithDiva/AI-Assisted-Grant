@@ -1,3 +1,5 @@
+import { countWords } from '@grant/shared';
+
 /** Section content is stored as `{ text }` JSON, so reading it is done in one place. */
 export function readSectionText(content: unknown): string {
   if (content && typeof content === 'object' && 'text' in content) {
@@ -7,6 +9,5 @@ export function readSectionText(content: unknown): string {
   return '';
 }
 
-export function countWords(text: string): number {
-  return text.trim() ? text.trim().split(/\s+/).length : 0;
-}
+/** Shared with the web editor, so both count words identically (formatting markers excluded). */
+export { countWords };

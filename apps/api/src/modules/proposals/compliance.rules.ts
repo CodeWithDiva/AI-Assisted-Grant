@@ -1,5 +1,5 @@
 import type { ComplianceIssue } from '@grant/shared';
-import { countWords } from './section-text.util';
+import { countWords, plainText } from '@grant/shared';
 
 export interface CheckableSection {
   id: string;
@@ -45,12 +45,13 @@ export function runDeterministicChecks(
       );
     }
 
-    if (section.charLimit && section.text.length > section.charLimit) {
+    const characters = plainText(section.text).length;
+    if (section.charLimit && characters > section.charLimit) {
       issues.push(
         issue(
           section,
           'ERROR',
-          `${section.text.length} characters — over the ${section.charLimit}-character limit.`,
+          `${characters} characters — over the ${section.charLimit}-character limit.`,
         ),
       );
     }

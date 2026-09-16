@@ -19,6 +19,7 @@ import {
 import { createHash, randomBytes } from 'node:crypto';
 import type { Env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
+import { invitationEmail } from '../email/email-templates';
 import { EmailService } from '../email/email.service';
 
 const INVITATION_DAYS = 7;
@@ -165,14 +166,13 @@ export class OrganizationsService {
     const link = `${this.config.get('WEB_ORIGIN', { infer: true })}/invite/${token}`;
     const emailed = await this.email.send({
       to: [email],
-      subject: `${invitation.invitedBy.name} invited you to ${invitation.organization.name} on GrantPilot`,
-      text: [
-        `${invitation.invitedBy.name} has invited you to join ${invitation.organization.name} as ${input.role.toLowerCase()}.`,
-        '',
-        `Accept the invitation: ${link}`,
-        '',
-        `The link expires in ${INVITATION_DAYS} days.`,
-      ].join('\n'),
+      ...invitationEmail({
+        organizationName: invitation.organization.name,
+        inviterName: invitation.invitedBy.name,
+        role: input.role,
+        link,
+        expiresInDays: INVITATION_DAYS,
+      }),
     });
 
     return { ...this.toInvitationView(invitation), token, link, emailed };
