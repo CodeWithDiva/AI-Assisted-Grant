@@ -1,63 +1,54 @@
-# Release notes — v0.1.0 (MVP)
+# Release notes
 
-The MVP of GrantPilot: draft grant proposals against a funder's template, review them, track deadlines and export the result.
+## v0.2.0
 
-## What is in this release
+A redesign of the interface, a working team feature, and production file storage.
 
-**Accounts and organizations**
-- Email/password sign-up and sign-in, JWT in httpOnly cookies, rotating refresh tokens
-- Organizations with Owner / Editor / Viewer roles; invitations valid for 7 days
-- One user can belong to several organizations and switch between them
+**New interface**
+- Dark sidebar with grouped navigation (Writing, Library, Organization), icons and an organization switcher
+- Top bar with breadcrumbs and a "New proposal" button available from anywhere
+- Dashboard rebuilt around what to do next: an "Up next" card for the nearest draft deadline, a setup checklist, the pipeline with requested amounts per stage, and upcoming deadlines as calendar tiles
+- Proposals as a table with status tabs, amounts and next deadlines
+- Template cards, template-picker cards when starting a proposal, deadline date tiles with inline actions
+- Proposal editor: status dropdown, Export menu (Word / PDF), word-limit progress bar under the text
+- Sign-in and sign-up with a live preview of the editor
+- Pages load on demand, so the first visit downloads less
 
-**Organization knowledge base**
-- Profile: mission, vision, who you serve, team, annual budget, programs, past results
-- Document upload (PDF, DOCX, TXT, MD up to 20 MB) with automatic text extraction
+**Team**
+- New Team page: members with role changes and removal, pending invitations with revoke
+- Invitations are emailed, and the link is also shown once with a Copy button
+- Invitation page shows who invited you and to which organization before you sign in; new accounts return to it automatically
 
-**Funder templates**
-- Starter library: foundation grant, letter of inquiry, startup innovation grant, government grant
-- Import from an RFP: the AI reads out sections, word limits, eligibility and scoring criteria for you to review and save
+**Account and settings**
+- New Settings page: change your name, change your password (signs out every other session), edit the organization's details
 
-**AI drafting**
-- Section-by-section drafting from your own profile and documents, streamed as it is written
-- Rewrite actions: shorten, expand, more formal, plainer language, or a custom instruction
-- Never invents facts — missing ones appear as `[NEEDS INPUT: …]`
-- Full version history per section, including which versions came from the AI
+**Storage**
+- `STORAGE_DRIVER=s3` now works with AWS S3 and S3-compatible services (Cloudflare R2, Backblaze B2, MinIO)
 
-**Review**
-- Instant checks: empty sections, word and character limits, leftover placeholders, unused length, missing deadline
-- AI review: a score out of 5 against each of the funder's criteria with what would raise it
-- Funder fit score (0-100) with reasons and gaps
+**Fixes**
+- Normal page loads could hit the sign-in rate limit (`429`) and log people out — the tight limit now applies only to register, login and password change
+- Proposals no longer show a writing-progress bar once they are submitted or decided
 
-**Deadlines**
-- Deadlines linked to proposals, with overdue / next-30-days / later grouping
-- Email reminders 14, 7, 3 and 1 day before, sent by a daily job (never twice for the same reminder)
-- `.ics` download for Google, Outlook and Apple Calendar
+**Other**
+- `GET /health` reports whether the AI key is configured; the sidebar shows it
+- `scripts/seed-demo.mjs` loads a realistic demo workspace for client demos
+- The smoke test now covers team invitations, acceptance, viewer permissions, renaming and password changes
 
-**Export**
-- DOCX and PDF in the funder's section order, with export history and re-download
+## v0.1.0 (MVP)
 
-**Operations**
-- Rate limits (10/min on credentials, 120/hour on AI routes, 300/min overall), Helmet headers, strict CORS
-- AI usage logged per call (model, tokens, latency, failures) and visible at `/admin/ai-usage`
-- `GET /api/v1/health` for uptime monitoring
+Accounts and organizations with roles · organization profile and document upload with text extraction · funder template library and AI import from RFPs · section-by-section AI drafting with rewrites and version history · compliance review and funder fit score · deadlines with email reminders and calendar files · DOCX and PDF export · rate limits, usage logging and health checks.
 
 ## Known issues and limits
 
 | # | Issue | Workaround / plan |
 |---|-------|-------------------|
-| 1 | **S3 storage is not implemented** — `STORAGE_DRIVER=s3` throws `NotImplemented`; only local disk works | Mount a persistent disk at `UPLOAD_DIR`, or implement the S3 driver before real uploads (see DEPLOYMENT.md) |
-| 2 | **Scanned PDFs** produce no text, so template import fails on them | Upload a text PDF or Word file, or build the template by hand; OCR is Phase 2 |
-| 3 | **Section text is plain text**, not rich text — no bold, italics or bullet formatting carried into exports | Deliberate for the MVP; a rich-text editor is Phase 2 |
-| 4 | **Member invitations have no UI** — the API returns a token that must be shared manually | Invitation screen and invitation emails are Phase 2 |
-| 5 | **The reminder job runs inside the API process** | Fine for one instance; move it to a dedicated worker before scaling out |
-| 6 | **AI features need `ANTHROPIC_API_KEY`** — without it those endpoints return 503 | The rest of the app, including the code-based review checks, works without it |
-| 7 | **No end-to-end browser tests** — coverage is unit tests plus a scripted API smoke test | Playwright suite is Phase 2 |
-| 8 | **Redis is not wired up** — background jobs run in-process | Only needed when generation moves to a queue |
+| 1 | **Scanned PDFs** produce no text, so template import fails on them | Upload a text PDF or Word file, or build the template by hand; OCR is Phase 2 |
+| 2 | **Section text is plain text** — no bold, italics or bullets in exports | Deliberate for the MVP; rich text is Phase 2 |
+| 3 | **The reminder job runs inside the API process** | Fine for one instance; move it to a dedicated worker before scaling out |
+| 4 | **AI features need `ANTHROPIC_API_KEY`** — without it they return 503 | Everything else, including the code-based review checks, works without it |
+| 5 | **No end-to-end browser tests** — coverage is unit tests plus a scripted API smoke test | Playwright suite is Phase 2 |
+| 6 | **Email address cannot be changed** from Settings | Change it in the database for now |
 
-## Not in this release (agreed as Phase 2)
+## Not in these releases (Phase 2)
 
-Payments and subscriptions · funder discovery (searching for suitable funders) · real-time collaborative editing · vector search over large document sets · budget builder · submitting directly to funder portals · two-way calendar sync · languages other than English · mobile app
-
-## Upgrade notes
-
-First deployment — no upgrade steps. Run `prisma migrate deploy` and then `db:seed` once to load the starter template library.
+Payments and subscriptions · funder discovery · real-time collaborative editing · vector search over large document sets · budget builder · submitting directly to funder portals · two-way calendar sync · languages other than English · mobile app

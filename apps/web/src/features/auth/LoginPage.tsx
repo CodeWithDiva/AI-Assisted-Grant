@@ -1,13 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Alert, Button, Field } from '../../components/ui';
-import { authApi } from './api';
+import { authApi, safeNext } from './api';
 import { useAuth } from './AuthProvider';
 import { AuthShell } from './AuthShell';
 
 export function LoginPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
   const { refresh } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,7 +18,7 @@ export function LoginPage() {
     mutationFn: authApi.login,
     onSuccess: async () => {
       await refresh();
-      navigate('/', { replace: true });
+      navigate(next ?? '/', { replace: true });
     },
   });
 
@@ -27,13 +29,16 @@ export function LoginPage() {
 
   return (
     <AuthShell
-      title="Sign in"
-      subtitle="Pick up where you left off."
+      title="Welcome back"
+      subtitle="Sign in to continue your applications."
       footer={
         <>
-          No account yet?{' '}
-          <Link to="/register" className="font-medium text-accent-600 hover:underline">
-            Create one
+          New to GrantPilot?{' '}
+          <Link
+            to={next ? `/register?next=${encodeURIComponent(next)}` : '/register'}
+            className="font-medium text-accent-600 hover:underline"
+          >
+            Create an account
           </Link>
         </>
       }
@@ -45,6 +50,7 @@ export function LoginPage() {
           type="email"
           autoComplete="email"
           required
+          autoFocus
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
@@ -56,7 +62,7 @@ export function LoginPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Button type="submit" variant="primary" disabled={login.isPending} className="w-full">
+        <Button type="submit" variant="primary" disabled={login.isPending} className="h-10 w-full">
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </Button>
       </form>

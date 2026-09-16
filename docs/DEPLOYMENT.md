@@ -9,7 +9,7 @@ Three pieces go to production: the **web** app (static files), the **api** (Node
 | **Neon** (or AWS RDS) | PostgreSQL 16+ | Copy the connection string, keep `sslmode=require` |
 | **Render** (or AWS ECS / Fly.io) | API container | Needs a Docker deploy from this repo |
 | **Vercel** | Web app | Static build, no server code |
-| **AWS S3** | Uploaded and exported files | One private bucket, plus an IAM user with read/write to it |
+| **AWS S3** (or R2 / B2) | Uploaded and exported files | One private bucket; an IAM role or user with `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on it |
 | **Resend** | Reminder emails | Verify the sending domain |
 | **Anthropic Console** | AI features | Create an API key, set a monthly spend limit |
 | **Sentry** (optional) | Error tracking | |
@@ -29,9 +29,16 @@ JWT_REFRESH_SECRET=<a different 64 random characters>
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5
 
-STORAGE_DRIVER=s3        # see "Before going live" below
-UPLOAD_DIR=./uploads
+STORAGE_DRIVER=s3
 MAX_UPLOAD_MB=20
+S3_BUCKET=grantpilot-files
+S3_REGION=eu-west-1
+# Leave the two keys empty on AWS to use the server's IAM role.
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+# Only for S3-compatible services such as Cloudflare R2, Backblaze B2 or MinIO:
+S3_ENDPOINT=
+S3_FORCE_PATH_STYLE=false
 
 EMAIL_DRIVER=resend
 RESEND_API_KEY=re_...
@@ -94,7 +101,7 @@ Because the app is a single-page router, add a rewrite so deep links work:
 
 ## 6. Before going live
 
-- [ ] `STORAGE_DRIVER=s3` — the S3 driver in `storage.service.ts` still throws `NotImplemented`; implement it (or keep a persistent disk mounted at `UPLOAD_DIR` on the API host) before users upload real files.
+- [ ] `STORAGE_DRIVER=s3` with a **private** bucket (block all public access). The API reads and writes files itself; nothing is served from the bucket directly.
 - [ ] `WEB_ORIGIN` matches the web domain exactly, so cookies and CORS work.
 - [ ] Cookies are `secure` automatically when `NODE_ENV=production`; the API must be served over HTTPS.
 - [ ] Set a spend limit on the Anthropic key, and watch `GET /admin/ai-usage`.

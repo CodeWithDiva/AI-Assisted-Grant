@@ -1,4 +1,9 @@
-import type { CreateOrganizationInput, InviteMemberInput, OrgRole } from '@grant/shared';
+import type {
+  CreateOrganizationInput,
+  InviteMemberInput,
+  OrgRole,
+  UpdateOrganizationInput,
+} from '@grant/shared';
 import { apiFetch } from '../../lib/api';
 
 export interface Organization {
@@ -30,6 +35,8 @@ export const organizationsApi = {
   get: (orgId: string) => apiFetch<Organization>(`/orgs/${orgId}`),
   create: (body: CreateOrganizationInput) =>
     apiFetch<Organization>('/orgs', { method: 'POST', body: JSON.stringify(body) }),
+  update: (orgId: string, body: UpdateOrganizationInput) =>
+    apiFetch<Organization>(`/orgs/${orgId}`, { method: 'PATCH', body: JSON.stringify(body) }),
   members: (orgId: string) => apiFetch<OrganizationMember[]>(`/orgs/${orgId}/members`),
   invite: (orgId: string, body: InviteMemberInput) =>
     apiFetch<Invitation>(`/orgs/${orgId}/invitations`, {

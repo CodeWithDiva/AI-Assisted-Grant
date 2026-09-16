@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "pnpm --filter @grant/shared build && pnpm -r --parallel dev",
+    "dev": "node scripts/free-ports.mjs 4000 5173 && pnpm --filter @grant/shared build && pnpm -r --parallel dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write .",

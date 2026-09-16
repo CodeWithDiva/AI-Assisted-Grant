@@ -17,3 +17,8 @@ export const inviteMemberSchema = z.object({
   role: z.enum(OrgRole),
 });
 export type InviteMemberInput = z.infer<typeof inviteMemberSchema>;
+
+export const updateMemberRoleSchema = z.object({
+  role: z.enum(OrgRole),
+});
+export type UpdateMemberRoleInput = z.infer<typeof updateMemberRoleSchema>;

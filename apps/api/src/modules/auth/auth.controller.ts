@@ -1,10 +1,14 @@
-import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res } from '@nestjs/common';
 import {
+  changePasswordSchema,
   loginSchema,
   registerSchema,
+  updateAccountSchema,
   type AuthUser,
+  type ChangePasswordInput,
   type LoginInput,
   type RegisterInput,
+  type UpdateAccountInput,
 } from '@grant/shared';
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
@@ -14,12 +18,17 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { REFRESH_TOKEN_COOKIE } from './auth.constants';
 import { AuthService } from './auth.service';
 
-// Credential endpoints are the ones worth brute-forcing, so they get a tight limit.
-@Throttle({ default: { ttl: 60_000, limit: 10 } })
+/**
+ * Only the endpoints that accept a password are worth brute-forcing, so only they get the
+ * tight limit. `/auth/me` and `/auth/refresh` run on every page load and must not share it.
+ */
+const CREDENTIAL_LIMIT = { default: { ttl: 60_000, limit: 10 } };
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
+  @Throttle(CREDENTIAL_LIMIT)
   @Public()
   @Post('register')
   async register(
@@ -31,6 +40,7 @@ export class AuthController {
     return user;
   }
 
+  @Throttle(CREDENTIAL_LIMIT)
   @Public()
   @Post('login')
   @HttpCode(200)
@@ -60,5 +70,26 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthUser): AuthUser {
     return user;
+  }
+
+  @Patch('me')
+  updateAccount(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(updateAccountSchema)) body: UpdateAccountInput,
+  ): Promise<AuthUser> {
+    return this.auth.updateAccount(user.id, body);
+  }
+
+  /** Signs out every other session, then gives this one fresh tokens. */
+  @Throttle(CREDENTIAL_LIMIT)
+  @Post('password')
+  @HttpCode(204)
+  async changePassword(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(changePasswordSchema)) body: ChangePasswordInput,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<void> {
+    await this.auth.changePassword(user.id, body);
+    await this.auth.issueTokens(user, res);
   }
 }

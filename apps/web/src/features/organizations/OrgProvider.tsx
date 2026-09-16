@@ -77,7 +77,7 @@ export function NoOrganizationNotice() {
         title="Start with an organization"
         action={
           <Link
-            to="/organization"
+            to="/organizations"
             className="inline-flex h-9 items-center rounded-md border border-accent-700 bg-accent-600 px-4 text-[13.5px] font-medium text-white hover:bg-accent-700"
           >
             Create an organization

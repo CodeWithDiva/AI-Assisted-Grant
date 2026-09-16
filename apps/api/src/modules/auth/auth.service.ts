@@ -1,7 +1,13 @@
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import type { AuthUser, LoginInput, RegisterInput } from '@grant/shared';
+import type {
+  AuthUser,
+  ChangePasswordInput,
+  LoginInput,
+  RegisterInput,
+  UpdateAccountInput,
+} from '@grant/shared';
 import bcrypt from 'bcryptjs';
 import { createHash, randomBytes } from 'node:crypto';
 import type { CookieOptions, Response } from 'express';
@@ -49,6 +55,36 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
     return { id: user.id, email: user.email, name: user.name };
+  }
+
+  async updateAccount(userId: string, input: UpdateAccountInput): Promise<AuthUser> {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { name: input.name },
+      select: { id: true, email: true, name: true },
+    });
+  }
+
+  async changePassword(userId: string, input: ChangePasswordInput): Promise<void> {
+    const user = await this.prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    if (!user.passwordHash || !(await bcrypt.compare(input.currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('The current password is not correct');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: userId },
+        data: { passwordHash: await bcrypt.hash(input.newPassword, BCRYPT_ROUNDS) },
+      }),
+      // A changed password should end every existing session, including stolen ones.
+      this.prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
   }
 
   async issueTokens(user: AuthUser, res: Response): Promise<void> {

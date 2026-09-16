@@ -18,6 +18,7 @@ Drafts grant proposals against funder templates and tracks application deadlines
 - **Review** — instant limit and placeholder checks, plus an AI score against the funder's criteria and a 0-100 funder-fit score
 - **Deadlines** — reminders by email 14/7/3/1 days before, calendar export, status pipeline
 - **Export** — DOCX and PDF in the funder's section order
+- **Team** — invite colleagues by email as owner, editor or viewer; change roles; account and password settings
 
 The AI never invents facts: anything it was not given appears as `[NEEDS INPUT: …]`.
 
@@ -30,7 +31,7 @@ apps/
 packages/
   shared/     Enums, Zod schemas and types shared by web and api
 docs/         Plan, user guide, API reference, deployment guide, release notes
-scripts/      smoke-test.sh — end-to-end check against a running API
+scripts/      smoke-test.sh (end-to-end API check), seed-demo.mjs (demo data), free-ports.mjs
 infra/docker/ Dockerfile (built by GitHub Actions, not needed locally)
 ```
 
@@ -58,6 +59,12 @@ pnpm db:seed
 
 # 4. Start web + api
 pnpm dev
+```
+
+To see the app with realistic data, load the demo workspace (the API must be running):
+
+```bash
+node scripts/seed-demo.mjs          # then sign in as demo@grantpilot.test / DemoPass2026
 ```
 
 - Web: http://localhost:5173

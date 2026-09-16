@@ -7,7 +7,7 @@ Base URL: `http://localhost:4000/api/v1` (development).
 - **Auth**: every endpoint needs a signed-in user except those marked **public**. The access token is sent as an httpOnly cookie (`gp_access`); the browser sends it automatically with `credentials: 'include'`. A `Bearer` token in the `Authorization` header also works.
 - **Roles**: routes under `/orgs/:orgId` require membership of that organization. Where a role is listed (OWNER / EDITOR), a VIEWER gets `403`.
 - **Validation**: request bodies are validated with Zod. A failure returns `400` with `{ "message": ["field: reason"], "error": "Bad Request", "statusCode": 400 }`.
-- **Rate limits**: 300 requests/minute per IP overall; 10/minute on `/auth/*`; 120/hour on the proposal and template routes (these can call the AI).
+- **Rate limits**: 300 requests/minute per IP overall; 10/minute on register, login and password change; 120/hour on the proposal and template routes (these can call the AI).
 
 ## Auth
 
@@ -18,6 +18,8 @@ Base URL: `http://localhost:4000/api/v1` (development).
 | POST | `/auth/refresh` | **public** — rotates the refresh token from the cookie. |
 | POST | `/auth/logout` | **public** — revokes the refresh token, clears cookies. `204`. |
 | GET | `/auth/me` | Current user. |
+| PATCH | `/auth/me` | `{ name }` — rename the signed-in user. |
+| POST | `/auth/password` | `{ currentPassword, newPassword }`. Revokes every session, then issues new cookies for this one. `204`. |
 
 ## Organizations
 
@@ -28,8 +30,12 @@ Base URL: `http://localhost:4000/api/v1` (development).
 | GET | `/orgs/:orgId` | member | |
 | PATCH | `/orgs/:orgId` | OWNER | |
 | GET | `/orgs/:orgId/members` | member | |
-| POST | `/orgs/:orgId/invitations` | OWNER | `{ email, role }`. Returns a `token` valid 7 days. |
+| PATCH | `/orgs/:orgId/members/:membershipId` | OWNER | `{ role }`. Refuses to demote the last owner. |
 | DELETE | `/orgs/:orgId/members/:membershipId` | OWNER | Refuses to remove the last owner. |
+| GET | `/orgs/:orgId/invitations` | OWNER | Pending (not accepted, not expired) invitations. |
+| POST | `/orgs/:orgId/invitations` | OWNER | `{ email, role }`. Emails the link and returns it once as `link` + `token`, with `emailed`. Replaces any pending invitation to the same address. Valid 7 days. |
+| DELETE | `/orgs/:orgId/invitations/:invitationId` | OWNER | Revokes a pending invitation. `204`. |
+| GET | `/invitations/:token` | **public** | Preview: organization, inviter, email, role, and `status` (`PENDING`, `ACCEPTED`, `EXPIRED`). |
 | POST | `/invitations/:token/accept` | — | The signed-in user's email must match the invitation. |
 
 ## Organization profile and documents
@@ -129,4 +135,4 @@ UPDATE users SET "platformRole" = 'ADMIN' WHERE email = 'you@example.com';
 
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/health` | **public** — `{ status, database, version, timestamp }`. Use it for uptime checks. |
+| GET | `/health` | **public** — `{ status, database, ai, version, timestamp }`. `ai` is `configured` or `missing`. Use it for uptime checks. |

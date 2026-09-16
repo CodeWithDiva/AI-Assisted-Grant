@@ -1,20 +1,18 @@
-import { createBrowserRouter } from 'react-router';
+import { lazy, type ComponentType } from 'react';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
-import { DashboardPage } from '../features/dashboard/DashboardPage';
-import { DeadlinesPage } from '../features/deadlines/DeadlinesPage';
-import { OrganizationDetailPage } from '../features/organizations/OrganizationDetailPage';
-import { OrganizationsPage } from '../features/organizations/OrganizationsPage';
-import { NewProposalPage } from '../features/proposals/NewProposalPage';
-import { ProposalEditorPage } from '../features/proposals/ProposalEditorPage';
-import { ProposalsPage } from '../features/proposals/ProposalsPage';
 import { OrgProvider } from '../features/organizations/OrgProvider';
-import { TemplateDetailPage } from '../features/templates/TemplateDetailPage';
-import { TemplatesPage } from '../features/templates/TemplatesPage';
 import { AppLayout } from './AppLayout';
 import { ComingSoonPage } from './ComingSoonPage';
+
+/** Each page is its own chunk, so the first load only downloads what it shows. */
+function page(loader: () => Promise<Record<string, unknown>>, name: string) {
+  const Component = lazy(async () => ({ default: (await loader())[name] as ComponentType }));
+  return <Component />;
+}
 
 export const router = createBrowserRouter([
   {
@@ -22,6 +20,10 @@ export const router = createBrowserRouter([
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
+      {
+        path: '/invite/:token',
+        element: page(() => import('../features/team/AcceptInvitePage'), 'AcceptInvitePage'),
+      },
       {
         element: <RequireAuth />,
         children: [
@@ -32,15 +34,87 @@ export const router = createBrowserRouter([
                 path: '/',
                 element: <AppLayout />,
                 children: [
-                  { index: true, element: <DashboardPage /> },
-                  { path: 'proposals', element: <ProposalsPage /> },
-                  { path: 'proposals/new', element: <NewProposalPage /> },
-                  { path: 'proposals/:proposalId', element: <ProposalEditorPage /> },
-                  { path: 'templates', element: <TemplatesPage /> },
-                  { path: 'templates/:templateId', element: <TemplateDetailPage /> },
-                  { path: 'deadlines', element: <DeadlinesPage /> },
-                  { path: 'organization', element: <OrganizationsPage /> },
-                  { path: 'organization/:orgId', element: <OrganizationDetailPage /> },
+                  {
+                    index: true,
+                    element: page(
+                      () => import('../features/dashboard/DashboardPage'),
+                      'DashboardPage',
+                    ),
+                  },
+                  {
+                    path: 'proposals',
+                    element: page(
+                      () => import('../features/proposals/ProposalsPage'),
+                      'ProposalsPage',
+                    ),
+                  },
+                  {
+                    path: 'proposals/new',
+                    element: page(
+                      () => import('../features/proposals/NewProposalPage'),
+                      'NewProposalPage',
+                    ),
+                  },
+                  {
+                    path: 'proposals/:proposalId',
+                    element: page(
+                      () => import('../features/proposals/ProposalEditorPage'),
+                      'ProposalEditorPage',
+                    ),
+                  },
+                  {
+                    path: 'deadlines',
+                    element: page(
+                      () => import('../features/deadlines/DeadlinesPage'),
+                      'DeadlinesPage',
+                    ),
+                  },
+                  {
+                    path: 'templates',
+                    element: page(
+                      () => import('../features/templates/TemplatesPage'),
+                      'TemplatesPage',
+                    ),
+                  },
+                  {
+                    path: 'templates/:templateId',
+                    element: page(
+                      () => import('../features/templates/TemplateDetailPage'),
+                      'TemplateDetailPage',
+                    ),
+                  },
+                  {
+                    path: 'documents',
+                    element: page(
+                      () => import('../features/documents/DocumentsPage'),
+                      'DocumentsPage',
+                    ),
+                  },
+                  {
+                    path: 'profile',
+                    element: page(() => import('../features/profile/ProfilePage'), 'ProfilePage'),
+                  },
+                  {
+                    path: 'team',
+                    element: page(() => import('../features/team/TeamPage'), 'TeamPage'),
+                  },
+                  {
+                    path: 'settings',
+                    element: page(
+                      () => import('../features/settings/SettingsPage'),
+                      'SettingsPage',
+                    ),
+                  },
+                  {
+                    path: 'organizations',
+                    element: page(
+                      () => import('../features/organizations/OrganizationsPage'),
+                      'OrganizationsPage',
+                    ),
+                  },
+                  // Addresses used by earlier versions of the app.
+                  { path: 'organization', element: <Navigate to="/organizations" replace /> },
+                  { path: 'organization/:orgId', element: <Navigate to="/profile" replace /> },
                   { path: '*', element: <ComingSoonPage title="Page not found" /> },
                 ],
               },

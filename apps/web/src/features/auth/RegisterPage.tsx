@@ -1,13 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import { Alert, Button, Field } from '../../components/ui';
-import { authApi } from './api';
+import { authApi, safeNext } from './api';
 import { useAuth } from './AuthProvider';
 import { AuthShell } from './AuthShell';
 
 export function RegisterPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const next = safeNext(searchParams.get('next'));
   const { refresh } = useAuth();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -17,7 +19,8 @@ export function RegisterPage() {
     mutationFn: authApi.register,
     onSuccess: async () => {
       await refresh();
-      navigate('/organization', { replace: true });
+      // Invited people go back to accept; everyone else sets up their organization first.
+      navigate(next ?? '/organizations', { replace: true });
     },
   });
 
@@ -29,11 +32,14 @@ export function RegisterPage() {
   return (
     <AuthShell
       title="Create your account"
-      subtitle="Two minutes to set up, then your first draft."
+      subtitle="Set up takes two minutes. Your first draft follows."
       footer={
         <>
-          Already registered?{' '}
-          <Link to="/login" className="font-medium text-accent-600 hover:underline">
+          Already have an account?{' '}
+          <Link
+            to={next ? `/login?next=${encodeURIComponent(next)}` : '/login'}
+            className="font-medium text-accent-600 hover:underline"
+          >
             Sign in
           </Link>
         </>
@@ -45,6 +51,7 @@ export function RegisterPage() {
           label="Full name"
           autoComplete="name"
           required
+          autoFocus
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
@@ -66,8 +73,13 @@ export function RegisterPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <Button type="submit" variant="primary" disabled={register.isPending} className="w-full">
-          {register.isPending ? 'Creating…' : 'Create account'}
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={register.isPending}
+          className="h-10 w-full"
+        >
+          {register.isPending ? 'Creating your account…' : 'Create account'}
         </Button>
       </form>
     </AuthShell>

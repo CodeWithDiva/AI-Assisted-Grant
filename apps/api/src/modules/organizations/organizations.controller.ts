@@ -12,14 +12,18 @@ import {
 import {
   createOrganizationSchema,
   inviteMemberSchema,
+  updateMemberRoleSchema,
   updateOrganizationSchema,
   OrgRole,
   type AuthUser,
   type CreateOrganizationInput,
   type InviteMemberInput,
+  type UpdateMemberRoleInput,
   type UpdateOrganizationInput,
 } from '@grant/shared';
+import { Throttle } from '@nestjs/throttler';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { Public } from '../../common/decorators/public.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { OrgMemberGuard } from '../../common/guards/org-member.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -64,6 +68,32 @@ export class OrganizationsController {
     return this.organizations.listMembers(orgId);
   }
 
+  @Patch(':orgId/members/:membershipId')
+  @UseGuards(OrgMemberGuard)
+  @Roles(OrgRole.OWNER)
+  updateMemberRole(
+    @Param('orgId') orgId: string,
+    @Param('membershipId') membershipId: string,
+    @Body(new ZodValidationPipe(updateMemberRoleSchema)) body: UpdateMemberRoleInput,
+  ) {
+    return this.organizations.updateMemberRole(orgId, membershipId, body.role);
+  }
+
+  @Delete(':orgId/members/:membershipId')
+  @UseGuards(OrgMemberGuard)
+  @Roles(OrgRole.OWNER)
+  @HttpCode(204)
+  removeMember(@Param('orgId') orgId: string, @Param('membershipId') membershipId: string) {
+    return this.organizations.removeMember(orgId, membershipId);
+  }
+
+  @Get(':orgId/invitations')
+  @UseGuards(OrgMemberGuard)
+  @Roles(OrgRole.OWNER)
+  invitations(@Param('orgId') orgId: string) {
+    return this.organizations.listInvitations(orgId);
+  }
+
   @Post(':orgId/invitations')
   @UseGuards(OrgMemberGuard)
   @Roles(OrgRole.OWNER)
@@ -75,18 +105,26 @@ export class OrganizationsController {
     return this.organizations.invite(orgId, user.id, body);
   }
 
-  @Delete(':orgId/members/:membershipId')
+  @Delete(':orgId/invitations/:invitationId')
   @UseGuards(OrgMemberGuard)
   @Roles(OrgRole.OWNER)
   @HttpCode(204)
-  removeMember(@Param('orgId') orgId: string, @Param('membershipId') membershipId: string) {
-    return this.organizations.removeMember(orgId, membershipId);
+  revokeInvitation(@Param('orgId') orgId: string, @Param('invitationId') invitationId: string) {
+    return this.organizations.revokeInvitation(orgId, invitationId);
   }
 }
 
 @Controller('invitations')
 export class InvitationsController {
   constructor(private readonly organizations: OrganizationsService) {}
+
+  /** Public so the invitee can see what they are joining before signing in. */
+  @Public()
+  @Throttle({ default: { ttl: 60_000, limit: 20 } })
+  @Get(':token')
+  preview(@Param('token') token: string) {
+    return this.organizations.previewInvitation(token);
+  }
 
   @Post(':token/accept')
   @HttpCode(200)

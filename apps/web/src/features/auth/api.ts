@@ -1,4 +1,11 @@
-import type { AuthUser, LoginInput, RegisterInput } from '@grant/shared';
+import type {
+  AuthUser,
+  ChangePasswordInput,
+  HealthResponse,
+  LoginInput,
+  RegisterInput,
+  UpdateAccountInput,
+} from '@grant/shared';
 import { apiFetch } from '../../lib/api';
 
 export const authApi = {
@@ -8,4 +15,14 @@ export const authApi = {
   register: (body: RegisterInput) =>
     apiFetch<AuthUser>('/auth/register', { method: 'POST', body: JSON.stringify(body) }),
   logout: () => apiFetch<void>('/auth/logout', { method: 'POST' }),
+  updateAccount: (body: UpdateAccountInput) =>
+    apiFetch<AuthUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
+  changePassword: (body: ChangePasswordInput) =>
+    apiFetch<void>('/auth/password', { method: 'POST', body: JSON.stringify(body) }),
+  health: () => apiFetch<HealthResponse>('/health'),
 };
+
+/** Only allow in-app redirects after sign-in, never an absolute URL from the query string. */
+export function safeNext(next: string | null): string | null {
+  return next && next.startsWith('/') && !next.startsWith('//') ? next : null;
+}

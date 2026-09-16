@@ -1,23 +1,30 @@
+import type { ProposalStatus } from '@grant/shared';
 import { useQuery } from '@tanstack/react-query';
-import { Link, useNavigate } from 'react-router';
+import { FileText, Plus } from 'lucide-react';
+import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import {
   Badge,
   Button,
+  Card,
   EmptyState,
+  formatMoney,
   LimitBar,
-  PageHeader,
-  Row,
-  RowList,
+  PageTitle,
   Spinner,
+  Tabs,
 } from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { proposalsApi } from './api';
 import { statusLabels, statusTones } from './status';
 
+type Filter = 'ALL' | ProposalStatus;
+
 export function ProposalsPage() {
   const { activeOrg, isLoading } = useOrgs();
   const navigate = useNavigate();
   const orgId = activeOrg?.id ?? '';
+  const [filter, setFilter] = useState<Filter>('ALL');
 
   const proposals = useQuery({
     queryKey: ['proposals', orgId],
@@ -28,69 +35,157 @@ export function ProposalsPage() {
   if (isLoading) return <Spinner />;
   if (!activeOrg) return <NoOrganizationNotice />;
 
+  const all = proposals.data ?? [];
+  const visible = filter === 'ALL' ? all : all.filter((proposal) => proposal.status === filter);
+  const count = (status: ProposalStatus) => all.filter((p) => p.status === status).length;
+
   return (
-    <div className="mx-auto max-w-5xl">
-      <PageHeader
-        eyebrow="Applications"
+    <div className="space-y-6">
+      <PageTitle
         title="Proposals"
-        description="Each proposal follows one funder's format, section by section."
+        description="Every application you are writing or have sent, with its funder and deadline."
         actions={
-          <Button variant="primary" onClick={() => navigate('/proposals/new')}>
+          <Button variant="primary" icon={Plus} onClick={() => navigate('/proposals/new')}>
             New proposal
           </Button>
         }
       />
 
-      <div className="mt-6">
+      <Card padded={false}>
+        <div className="px-5 pt-3">
+          <Tabs<Filter>
+            value={filter}
+            onChange={setFilter}
+            items={[
+              { value: 'ALL', label: 'All', count: all.length },
+              { value: 'DRAFT', label: 'Draft', count: count('DRAFT') },
+              { value: 'IN_REVIEW', label: 'In review', count: count('IN_REVIEW') },
+              { value: 'SUBMITTED', label: 'Submitted', count: count('SUBMITTED') },
+              { value: 'AWARDED', label: 'Awarded', count: count('AWARDED') },
+              { value: 'REJECTED', label: 'Rejected', count: count('REJECTED') },
+            ]}
+          />
+        </div>
+
         {proposals.isPending ? (
-          <Spinner label="Loading proposals" />
-        ) : proposals.data?.length ? (
-          <RowList>
-            {proposals.data.map((proposal) => (
-              <Row key={proposal.id}>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    to={`/proposals/${proposal.id}`}
-                    className="font-display text-[17px] text-ink-900 hover:underline"
-                  >
-                    {proposal.title}
-                  </Link>
-                  <div className="mt-1 truncate text-[12.5px] text-ink-400">
-                    {proposal.funderName ? `${proposal.funderName} · ` : ''}
-                    {proposal.templateName ?? 'No template'}
-                    {proposal.nextDeadline
-                      ? ` · due ${new Date(proposal.nextDeadline).toLocaleDateString(undefined, {
-                          day: 'numeric',
-                          month: 'short',
-                        })}`
-                      : ''}
-                  </div>
-                </div>
-
-                <div className="hidden w-36 sm:block">
-                  <div className="tabular mb-1 text-right font-mono text-[11.5px] text-ink-400">
-                    {proposal.completedSections}/{proposal.sectionCount}
-                  </div>
-                  <LimitBar used={proposal.completedSections} limit={proposal.sectionCount || 1} />
-                </div>
-
-                <Badge tone={statusTones[proposal.status]}>{statusLabels[proposal.status]}</Badge>
-              </Row>
-            ))}
-          </RowList>
+          <div className="px-5">
+            <Spinner label="Loading proposals" />
+          </div>
+        ) : visible.length ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
+              <thead>
+                <tr className="border-b border-line text-[12px] text-ink-400">
+                  <th className="px-5 py-3 font-medium">Proposal</th>
+                  <th className="px-3 py-3 font-medium">Progress</th>
+                  <th className="px-3 py-3 text-right font-medium">Requested</th>
+                  <th className="px-3 py-3 font-medium">Next deadline</th>
+                  <th className="px-5 py-3 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line">
+                {visible.map((proposal) => {
+                  const due = proposal.nextDeadline ? new Date(proposal.nextDeadline) : null;
+                  const daysLeft = due ? Math.ceil((due.getTime() - Date.now()) / 864e5) : null;
+                  return (
+                    <tr
+                      key={proposal.id}
+                      onClick={() => navigate(`/proposals/${proposal.id}`)}
+                      className="cursor-pointer hover:bg-paper"
+                    >
+                      <td className="max-w-[320px] px-5 py-3.5">
+                        <div className="truncate font-display text-[16px] text-ink-900">
+                          {proposal.title}
+                        </div>
+                        <div className="mt-0.5 truncate text-[12.5px] text-ink-400">
+                          {[proposal.funderName, proposal.templateName]
+                            .filter(Boolean)
+                            .join(' · ') || 'No template'}
+                        </div>
+                      </td>
+                      <td className="w-44 px-3 py-3.5">
+                        {proposal.status === 'DRAFT' || proposal.status === 'IN_REVIEW' ? (
+                          <>
+                            <div className="tabular mb-1.5 text-[12px] text-ink-600">
+                              {proposal.completedSections} of {proposal.sectionCount} sections
+                            </div>
+                            <LimitBar
+                              used={proposal.completedSections}
+                              limit={proposal.sectionCount}
+                            />
+                          </>
+                        ) : (
+                          <span className="text-[12.5px] text-ink-400">
+                            {proposal.status === 'SUBMITTED'
+                              ? 'Sent to funder'
+                              : 'Decision received'}
+                          </span>
+                        )}
+                      </td>
+                      <td className="tabular px-3 py-3.5 text-right text-[14px] text-ink-800">
+                        {formatMoney(proposal.requestedAmount, proposal.currency)}
+                      </td>
+                      <td className="px-3 py-3.5 text-[13.5px]">
+                        {due ? (
+                          <>
+                            <div className="text-ink-800">
+                              {due.toLocaleDateString(undefined, {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </div>
+                            <div
+                              className={`text-[12px] ${
+                                daysLeft! < 0
+                                  ? 'text-flag-red'
+                                  : daysLeft! <= 7
+                                    ? 'text-flag-amber'
+                                    : 'text-ink-400'
+                              }`}
+                            >
+                              {daysLeft! < 0
+                                ? `${Math.abs(daysLeft!)} days late`
+                                : `in ${daysLeft} days`}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-ink-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-5 py-3.5">
+                        <Badge tone={statusTones[proposal.status]}>
+                          {statusLabels[proposal.status]}
+                        </Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <EmptyState
-            title="No proposals yet"
+            icon={FileText}
+            title={
+              filter === 'ALL'
+                ? 'No proposals yet'
+                : `Nothing ${statusLabels[filter as ProposalStatus].toLowerCase()}`
+            }
             action={
-              <Button variant="primary" onClick={() => navigate('/proposals/new')}>
-                Start a proposal
-              </Button>
+              filter === 'ALL' ? (
+                <Button variant="primary" icon={Plus} onClick={() => navigate('/proposals/new')}>
+                  Start a proposal
+                </Button>
+              ) : undefined
             }
           >
-            Choose a funder template and the sections, limits and criteria come with it.
+            {filter === 'ALL'
+              ? 'Pick a funder template and the sections, word limits and criteria come with it.'
+              : 'Proposals move here when you change their status.'}
           </EmptyState>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

@@ -10,4 +10,5 @@ export * from './types/auth';
 export * from './types/deadlines';
 export * from './types/documents';
 export * from './types/proposals';
+export * from './types/team';
 export * from './types/templates';

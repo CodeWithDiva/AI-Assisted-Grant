@@ -1,13 +1,23 @@
 import { ProposalStatus, RefineAction, type ProposalSectionView } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router';
-import { Alert, Badge, Button, LimitBar, SectionLabel, Spinner } from '../../components/ui';
+import { ChevronDown, ClipboardCheck } from 'lucide-react';
+import { useParams } from 'react-router';
+import {
+  Alert,
+  Badge,
+  Button,
+  formatMoney,
+  LimitBar,
+  Menu,
+  SectionLabel,
+  Spinner,
+} from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { proposalsApi } from './api';
 import { CompliancePanel } from './CompliancePanel';
 import { ExportButtons } from './ExportButtons';
-import { statusLabels } from './status';
+import { statusLabels, statusTones } from './status';
 
 const refineLabels: Record<RefineAction, string> = {
   SHORTEN: 'Shorten',
@@ -147,39 +157,48 @@ export function ProposalEditorPage() {
   const placeholders = text.split('[NEEDS INPUT').length - 1;
 
   return (
-    <div className="mx-auto max-w-6xl">
-      <Link to="/proposals" className="text-[13px] text-ink-400 hover:text-ink-900">
-        ← Proposals
-      </Link>
-
-      <header className="mt-3 flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
+    <div>
+      <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <div className="eyebrow mb-2">
-            {data.funderName ?? 'No funder recorded'}
-            {data.templateName ? ` · ${data.templateName}` : ''}
+          <div className="flex flex-wrap items-center gap-2.5">
+            <Menu
+              width="w-48"
+              trigger={(open) => (
+                <button
+                  type="button"
+                  title="Change status"
+                  className={`inline-flex items-center gap-1 rounded-full pr-1.5 ${open ? 'ring-3 ring-accent-100' : ''}`}
+                >
+                  <Badge tone={statusTones[data.status]}>{statusLabels[data.status]}</Badge>
+                  <ChevronDown className="size-3.5 text-ink-400" />
+                </button>
+              )}
+              items={Object.values(ProposalStatus).map((status) => ({
+                label: statusLabels[status],
+                selected: status === data.status,
+                onSelect: () => setStatus.mutate(status),
+              }))}
+            />
+            <span className="truncate text-[13px] text-ink-400">
+              {[data.funderName, data.templateName].filter(Boolean).join(' · ')}
+            </span>
           </div>
-          <h1 className="font-display text-[27px] leading-tight text-ink-900">{data.title}</h1>
+          <h1 className="mt-2.5 font-display text-[30px] leading-[1.15] tracking-[-0.01em] text-ink-900">
+            {data.title}
+          </h1>
           <p className="tabular mt-1.5 text-ink-600">
             {data.completedSections} of {data.sectionCount} sections written
+            {data.requestedAmount
+              ? ` · ${formatMoney(data.requestedAmount, data.currency)} requested`
+              : ''}
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <ExportButtons orgId={orgId} proposalId={proposalId} />
-          <Button onClick={() => setShowCompliance((value) => !value)}>
+          <Button icon={ClipboardCheck} onClick={() => setShowCompliance((value) => !value)}>
             {showCompliance ? 'Hide review' : 'Review draft'}
           </Button>
-          <select
-            value={data.status}
-            onChange={(event) => setStatus.mutate(event.target.value as ProposalStatus)}
-            className="h-9 rounded-md border border-line-strong bg-surface px-3 text-[13.5px] text-ink-900 focus:border-accent-600 focus:outline-none"
-          >
-            {Object.values(ProposalStatus).map((status) => (
-              <option key={status} value={status}>
-                {statusLabels[status]}
-              </option>
-            ))}
-          </select>
+          <ExportButtons orgId={orgId} proposalId={proposalId} />
         </div>
       </header>
 
@@ -299,7 +318,7 @@ export function ProposalEditorPage() {
                 setText(event.target.value);
               }}
               placeholder="Write here, or let the AI draft it first."
-              className="min-h-[460px] w-full resize-y bg-surface px-6 py-5 font-display text-[16.5px] leading-[1.75] text-ink-900 placeholder:text-ink-300 focus:outline-none"
+              className="min-h-[340px] w-full resize-y bg-surface px-6 py-5 font-display text-[16.5px] leading-[1.75] text-ink-900 placeholder:text-ink-300 focus:outline-none"
             />
 
             <div className="flex flex-wrap items-center gap-4 border-t border-line px-6 py-3">

@@ -1,6 +1,7 @@
 import type { ExportFormat } from '@grant/shared';
 import { useMutation } from '@tanstack/react-query';
-import { Button } from '../../components/ui';
+import { ChevronDown, Download, FileText, FileType2 } from 'lucide-react';
+import { Button, Menu } from '../../components/ui';
 import { API_BASE } from '../deadlines/api';
 import { proposalsApi } from './api';
 
@@ -17,20 +18,34 @@ export function ExportButtons({ orgId, proposalId }: { orgId: string; proposalId
   });
 
   return (
-    <>
-      {(['DOCX', 'PDF'] as ExportFormat[]).map((format) => (
-        <Button
-          key={format}
-          disabled={create.isPending}
-          onClick={() => create.mutate(format)}
-          title={`Download this proposal as ${format}`}
-        >
-          {create.isPending && create.variables === format ? 'Preparing…' : format}
-        </Button>
-      ))}
+    <div className="flex items-center gap-2">
+      <Menu
+        align="right"
+        width="w-64"
+        trigger={() => (
+          <Button variant="primary" icon={Download} disabled={create.isPending}>
+            {create.isPending ? 'Preparing…' : 'Export'}
+            <ChevronDown className="-mr-1 size-3.5 opacity-70" />
+          </Button>
+        )}
+        items={[
+          {
+            label: 'Word document',
+            description: '.docx — edit before sending',
+            icon: FileText,
+            onSelect: () => create.mutate('DOCX'),
+          },
+          {
+            label: 'PDF',
+            description: 'Ready to upload to a funder portal',
+            icon: FileType2,
+            onSelect: () => create.mutate('PDF'),
+          },
+        ]}
+      />
       {create.error ? (
         <span className="text-[12.5px] text-flag-red">{create.error.message}</span>
       ) : null}
-    </>
+    </div>
   );
 }

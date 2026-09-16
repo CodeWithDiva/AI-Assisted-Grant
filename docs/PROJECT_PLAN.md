@@ -24,6 +24,15 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 | Day 14 — UAT fixes and release prep | 🟡 User guide, API reference, deployment guide and release notes written; UAT fixes pending |
 | Day 15 — Deployment and handover | 🟡 Deployment guide and CI ready; the production deploy needs the client's accounts |
 
+### After the 15-day plan (v0.2.0)
+
+- Interface redesigned and checked page by page with browser screenshots: dark grouped sidebar, org switcher, breadcrumbs, "Up next" dashboard, proposals table, template cards, deadline tiles
+- Team page with invitations (email + copyable link), role changes, removal, and an invitation acceptance page
+- Settings page: rename, password change (revokes other sessions), organization details
+- S3 / S3-compatible storage driver, tested against a local S3 server
+- Fixed a rate-limit bug that could sign people out during normal use
+- Demo data script (`scripts/seed-demo.mjs`) and a smoke test that now covers the team flows
+
 ### Deliberate changes from the original design
 
 | Planned | Built | Why |

@@ -101,6 +101,44 @@ done
   || fail "another organization's data was reachable"
 pass "access control"
 
+# --- team -----------------------------------------------------------------
+INVITE=$(curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/invitations" -H 'Content-Type: application/json' \
+  -d '{"email":"colleague@example.com","role":"EDITOR"}')
+INVITE_ID=$(echo "$INVITE" | json .id)
+INVITE_TOKEN=$(echo "$INVITE" | json .token)
+[ "$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/invitations" | json .length)" = "1" ] || fail "pending invitation not listed"
+# The preview is public: no cookie jar here on purpose.
+curl -sf "$BASE/invitations/$INVITE_TOKEN" | grep -q '"status":"PENDING"' || fail "invitation preview"
+curl -sf -b "$JAR" -X DELETE "$BASE/orgs/$ORG/invitations/$INVITE_ID" > /dev/null
+[ "$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/invitations" | json .length)" = "0" ] || fail "invitation not revoked"
+pass "invite, preview and revoke a team member"
+
+INVITEE_EMAIL="invitee$RANDOM$RANDOM@example.com"
+INVITEE_JAR="$(mktemp)"
+INVITE_TOKEN=$(curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/invitations" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$INVITEE_EMAIL\",\"role\":\"VIEWER\"}" | json .token)
+curl -sf -c "$INVITEE_JAR" -X POST "$BASE/auth/register" -H 'Content-Type: application/json' \
+  -d "{\"name\":\"Invited Viewer\",\"email\":\"$INVITEE_EMAIL\",\"password\":\"Secret12345\"}" > /dev/null
+curl -sf -b "$INVITEE_JAR" -X POST "$BASE/invitations/$INVITE_TOKEN/accept" | grep -q '"role":"VIEWER"' \
+  || fail "invitation could not be accepted"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/deadlines" \
+  -H 'Content-Type: application/json' -d '{"title":"Nope","type":"OTHER","dueAt":"2030-01-01"}')" = "403" ] \
+  || fail "a viewer was allowed to write"
+[ "$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/members" | json .length)" = "2" ] || fail "new member not listed"
+rm -f "$INVITEE_JAR"
+pass "invitee accepts, joins as viewer, and cannot write"
+
+# --- account --------------------------------------------------------------
+curl -sf -b "$JAR" -X PATCH "$BASE/auth/me" -H 'Content-Type: application/json' -d '{"name":"Smoke Renamed"}' \
+  | grep -q '"name":"Smoke Renamed"' || fail "account rename"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X POST "$BASE/auth/password" -H 'Content-Type: application/json' \
+  -d '{"currentPassword":"wrong-password","newPassword":"NewSecret12345"}')" = "401" ] || fail "wrong current password accepted"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -c "$JAR" -X POST "$BASE/auth/password" -H 'Content-Type: application/json' \
+  -d '{"currentPassword":"Secret12345","newPassword":"NewSecret12345"}')" = "204" ] || fail "password change"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -c "$JAR" -X POST "$BASE/auth/login" -H 'Content-Type: application/json' \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"NewSecret12345\"}")" = "200" ] || fail "sign-in with the new password"
+pass "rename account and change password"
+
 # --- cleanup --------------------------------------------------------------
 curl -sf -b "$JAR" -X DELETE "$BASE/orgs/$ORG/proposals/$PROP" > /dev/null
 curl -sf -b "$JAR" -X DELETE "$BASE/orgs/$ORG/deadlines/$DL" > /dev/null

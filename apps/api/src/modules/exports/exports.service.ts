@@ -58,7 +58,14 @@ export class ExportsService {
       const contents =
         format === 'DOCX' ? await this.builder.toDocx(payload) : await this.builder.toPdf(payload);
       const fileName = `${slugify(proposal.title)}.${format.toLowerCase()}`;
-      const fileKey = await this.storage.save(organizationId, fileName, contents);
+      const fileKey = await this.storage.save(
+        organizationId,
+        fileName,
+        contents,
+        format === 'DOCX'
+          ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+          : 'application/pdf',
+      );
 
       const saved = await this.prisma.export.update({
         where: { id: record.id },

@@ -1,7 +1,8 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
+import { Check, LibraryBig } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Alert, Button, Card, Field, PageHeader, Select } from '../../components/ui';
+import { Alert, Button, Card, Field, PageTitle, SectionLabel, Spinner } from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { templatesApi } from '../templates/api';
 import { proposalsApi } from './api';
@@ -23,7 +24,9 @@ export function NewProposalPage() {
   });
 
   useEffect(() => {
-    if (!templateId && templates.data?.length) setTemplateId(templates.data[0].id);
+    if (!templateId && templates.data?.length) {
+      setTemplateId((templates.data.find((t) => !t.isLibrary) ?? templates.data[0]).id);
+    }
   }, [templates.data, templateId]);
 
   const create = useMutation({
@@ -38,81 +41,103 @@ export function NewProposalPage() {
 
   if (!activeOrg) return <NoOrganizationNotice />;
 
-  const selected = templates.data?.find((template) => template.id === templateId);
-
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     create.mutate();
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <Link to="/proposals" className="text-[13px] text-ink-400 hover:text-ink-900">
-        ← Proposals
-      </Link>
-      <div className="mt-3">
-        <PageHeader
-          title="New proposal"
-          description="The template's sections are copied onto the proposal, so later template edits leave it alone."
+    <form onSubmit={onSubmit} className="mx-auto max-w-3xl space-y-6">
+      <PageTitle
+        title="New proposal"
+        description="Name it, choose the funder's format, and the sections are laid out for you."
+      />
+
+      <Alert>{create.error?.message}</Alert>
+
+      <Card className="space-y-5">
+        <Field
+          label="Proposal title"
+          required
+          autoFocus
+          placeholder="Girls' education programme 2027"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
         />
+        <Field
+          label="Amount to request"
+          type="number"
+          min={0}
+          hint="Optional — it shows up in your pipeline totals."
+          value={amount}
+          onChange={(event) => setAmount(event.target.value)}
+        />
+      </Card>
+
+      <div>
+        <div className="mb-3 flex items-baseline justify-between">
+          <SectionLabel>Funder template</SectionLabel>
+          <Link to="/templates" className="text-[13px] text-accent-600 hover:underline">
+            Import a new one
+          </Link>
+        </div>
+
+        {templates.isPending ? (
+          <Spinner label="Loading templates" />
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {(templates.data ?? []).map((template) => {
+              const selected = template.id === templateId;
+              return (
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => setTemplateId(template.id)}
+                  className={`relative rounded-[11px] border bg-surface p-4 text-left shadow-card transition-colors ${
+                    selected
+                      ? 'border-accent-600 ring-3 ring-accent-100'
+                      : 'border-line hover:border-line-strong'
+                  }`}
+                >
+                  {selected ? (
+                    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-accent-600 text-white">
+                      <Check className="size-3.5" strokeWidth={2.5} />
+                    </span>
+                  ) : null}
+                  <div className="flex items-center gap-2 text-[12px] text-ink-400">
+                    <LibraryBig className="size-3.5" />
+                    {template.isLibrary
+                      ? 'Starter library'
+                      : (template.funderName ?? 'Your template')}
+                  </div>
+                  <div className="mt-1.5 pr-6 font-display text-[17px] leading-snug text-ink-900">
+                    {template.name}
+                  </div>
+                  <div className="tabular mt-2 text-[12.5px] text-ink-600">
+                    {template.sectionCount} sections
+                    {template.totalWordLimit
+                      ? ` · ${template.totalWordLimit.toLocaleString()} words`
+                      : ''}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <Card className="mt-6">
-        <form onSubmit={onSubmit} className="space-y-5">
-          <Alert>{create.error?.message}</Alert>
-
-          <Field
-            label="Proposal title"
-            required
-            placeholder="Girls' education programme 2027"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-          />
-
-          <div>
-            <Select
-              label="Funder template"
-              value={templateId}
-              required
-              onChange={(event) => setTemplateId(event.target.value)}
-            >
-              <option value="">Select a template…</option>
-              {(templates.data ?? []).map((template) => (
-                <option key={template.id} value={template.id}>
-                  {template.name}
-                  {template.isLibrary ? ' — starter library' : ''}
-                </option>
-              ))}
-            </Select>
-            {selected ? (
-              <p className="tabular mt-1.5 text-[12.5px] text-ink-400">
-                {selected.sectionCount} sections
-                {selected.totalWordLimit
-                  ? ` · ${selected.totalWordLimit.toLocaleString()} words in total`
-                  : ' · no word limits recorded'}
-              </p>
-            ) : null}
-          </div>
-
-          <Field
-            label="Amount requested"
-            type="number"
-            min={0}
-            hint="Optional — you can add it later."
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-          />
-
-          <div className="flex items-center gap-3 border-t border-line pt-5">
-            <Button type="submit" variant="primary" disabled={create.isPending}>
-              {create.isPending ? 'Creating…' : 'Create proposal'}
-            </Button>
-            <Link to="/proposals" className="text-[13.5px] text-ink-600 hover:text-ink-900">
-              Cancel
-            </Link>
-          </div>
-        </form>
-      </Card>
-    </div>
+      <div className="flex items-center gap-3 border-t border-line pt-5">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={create.isPending || !templateId || !title.trim()}
+        >
+          {create.isPending ? 'Creating…' : 'Create proposal'}
+        </Button>
+        <Link to="/proposals" className="text-[13.5px] text-ink-600 hover:text-ink-900">
+          Cancel
+        </Link>
+      </div>
+    </form>
   );
 }
