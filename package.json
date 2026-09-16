@@ -15,7 +15,8 @@
     "db:migrate": "pnpm --filter @grant/api db:migrate",
     "db:generate": "pnpm --filter @grant/api db:generate",
     "db:studio": "pnpm --filter @grant/api db:studio",
-    "db:seed": "pnpm --filter @grant/api db:seed"
+    "db:seed": "pnpm --filter @grant/api db:seed",
+    "test": "pnpm -r test"
   },
   "devDependencies": {
     "prettier": "^3.9.6",

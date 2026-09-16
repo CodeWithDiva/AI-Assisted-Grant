@@ -6,6 +6,7 @@ import {
   type LoginInput,
   type RegisterInput,
 } from '@grant/shared';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -13,6 +14,8 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { REFRESH_TOKEN_COOKIE } from './auth.constants';
 import { AuthService } from './auth.service';
 
+// Credential endpoints are the ones worth brute-forcing, so they get a tight limit.
+@Throttle({ default: { ttl: 60_000, limit: 10 } })
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}

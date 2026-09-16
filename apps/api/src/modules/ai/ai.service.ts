@@ -34,8 +34,19 @@ export class AiService {
     return this.client !== null;
   }
 
-  /** Free-form generation (proposal sections, rewrites). Streams so long outputs cannot time out. */
+  /** Free-form generation. Streams internally so long outputs cannot time out. */
   async generateText(request: TextRequest): Promise<AiResult<string>> {
+    return this.streamText(request, () => undefined);
+  }
+
+  /**
+   * Same as generateText, but every token is handed to `onDelta` as it arrives so the
+   * proposal editor can show the draft being written.
+   */
+  async streamText(
+    request: TextRequest,
+    onDelta: (delta: string) => void,
+  ): Promise<AiResult<string>> {
     const client = this.requireClient();
     const startedAt = Date.now();
 
@@ -48,6 +59,7 @@ export class AiService {
         thinking: { type: 'adaptive' },
         output_config: { effort: request.effort ?? 'high' },
       });
+      stream.on('text', onDelta);
       const message = await stream.finalMessage();
 
       const text = message.content

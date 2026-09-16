@@ -8,28 +8,38 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 
 | Phase | Status |
 |-------|--------|
-| Day 1 — Requirements and scope freeze | 🟡 Plan ready; client questions (§12) pending |
-| Day 2 — Architecture and setup | 🟡 Monorepo, web/api/shared skeletons, CI, Dockerfile done; web and api build, `/health` verified; staging deploy pending |
+| Day 1 — Requirements and scope freeze | 🟡 Plan complete; the client questions in §12 are still open |
+| Day 2 — Architecture and setup | ✅ Monorepo, web/api/shared, CI (format, typecheck, tests, builds, Docker image, smoke test), Dockerfile |
 | Day 3 — Database, auth, RBAC | ✅ Migration applied, templates seeded; JWT auth, organizations, invitations and role guards verified end to end |
-| Day 4 — UI foundation and wireframes | 🟡 App shell, nav, sign-in/sign-up pages, protected routes and organization screen done; remaining screens pending |
-| Day 5 — Org profile and AI layer | 🟡 Profile CRUD, document upload with PDF/DOCX text extraction, storage service and Claude AI layer (text + structured JSON, usage logging) built; needs ANTHROPIC_API_KEY to run live |
-| Day 6 — Funder templates | ⚪ Not started |
-| Day 7 — AI proposal drafting (midpoint demo) | ⚪ Not started |
-| Day 8 — AI refinement and compliance | ⚪ Not started |
-| Day 9 — Deadline tracking and notifications | ⚪ Not started |
-| Day 10 — Document export and admin (feature freeze) | ⚪ Not started |
-| Day 11 — QA and testing | ⚪ Not started |
-| Day 12 — Bug fixing, performance, security | ⚪ Not started |
-| Day 13 — User acceptance testing | ⚪ Not started |
-| Day 14 — UAT fixes and release prep | ⚪ Not started |
-| Day 15 — Deployment and handover | ⚪ Not started |
+| Day 4 — UI foundation and wireframes | ✅ App shell, org switcher, sign-in/sign-up, protected routes, organization screens |
+| Day 5 — Org profile and AI layer | ✅ Profile, document upload with PDF/DOCX text extraction, storage service, Claude layer (streaming text + structured JSON + usage logging) |
+| Day 6 — Funder templates | ✅ Library + org templates, RFP import with AI extraction and a review screen, template detail |
+| Day 7 — AI proposal drafting (midpoint demo) | ✅ Proposals from templates, streaming section drafting, autosave, version history and restore |
+| Day 8 — AI refinement and compliance | ✅ Shorten/expand/tone/custom rewrites, compliance report (code checks + AI scoring), funder fit score |
+| Day 9 — Deadline tracking and notifications | ✅ Deadlines CRUD, dashboard, daily reminder job with email, `.ics` export, no duplicate reminders |
+| Day 10 — Document export and admin (feature freeze) | ✅ DOCX and PDF export with history and download, admin stats and AI usage endpoints |
+| Day 11 — QA and testing | ✅ 22 unit tests (vitest) + `scripts/smoke-test.sh` covering the full API flow; both run in CI |
+| Day 12 — Bug fixing, performance, security | ✅ Rate limits, 2 MB body cap, Helmet, strict CORS, tenant and role guards verified, upload type/size checks, prompt-injection wording in every prompt |
+| Day 13 — User acceptance testing | ⚪ Needs real users from the client |
+| Day 14 — UAT fixes and release prep | 🟡 User guide, API reference, deployment guide and release notes written; UAT fixes pending |
+| Day 15 — Deployment and handover | 🟡 Deployment guide and CI ready; the production deploy needs the client's accounts |
+
+### Deliberate changes from the original design
+
+| Planned | Built | Why |
+|---------|-------|-----|
+| TipTap rich-text editor | Plain-text sections with live word counts | Funders count words, not formatting; it keeps DOCX/PDF export exact and removes three dependencies. Rich text stays a Phase 2 item. |
+| BullMQ + Redis for background work | In-process scheduler (`@nestjs/schedule`) for the daily reminder job | Generation streams straight to the browser, so the only recurring job is reminders. No Redis to run or pay for; move to a queue when the API scales past one instance. |
+| Puppeteer/Chromium for PDF | `pdfkit` | No 150 MB browser download in the image, no headless-Chromium failures in containers. |
+| `claude-sonnet-5` + `claude-haiku-4-5` | `claude-opus-5` (override with `ANTHROPIC_MODEL`) | One model to tune and cache against; the model is a single env var to change. |
+| Playwright E2E suite | Unit tests + a scripted API smoke test in CI | Covers the real end-to-end path today; browser tests are Phase 2. |
 
 ### Local development setup (no Docker)
 
 | Service | Development | Production |
 |---------|-------------|------------|
 | Database | Local PostgreSQL 18 | Managed Postgres (Neon / AWS RDS) |
-| Redis | Upstash free tier (URL in `.env`) | Upstash / ElastiCache |
+| Background jobs | In-process scheduler (no Redis needed) | Same; move to a worker when scaling past one API instance |
 | File storage | Local `uploads/` folder | AWS S3 |
 | Email | Printed to the API console | Resend / AWS SES |
 | Containers | Not needed locally | `Dockerfile` built by GitHub Actions |
@@ -109,7 +119,7 @@ Sign up → Create org → Complete profile → Upload RFP → Review extracted 
 | Backend | **Node.js + NestJS (TypeScript)** | One language across the stack, built-in modules/guards for RBAC. *(Use Express + TS if the team doesn't know Nest; FastAPI only if the team is mainly Python.)* |
 | ORM / validation | **Prisma** + Zod | Fast migrations, type safety |
 | Database | **PostgreSQL** | Core data (pgvector can be added in Phase 2) |
-| Cache / queue | **Redis + BullMQ** (Upstash free tier in development, no local install) | Caching, rate limiting, and background jobs (AI generation, RFP parsing, exports, reminders) |
+| Background jobs | **`@nestjs/schedule`** in the API process (Redis + BullMQ only if it outgrows one instance) | Daily deadline reminders; AI generation streams straight to the browser instead of queueing |
 | AI | **Claude API** — `claude-opus-5` by default (override with `ANTHROPIC_MODEL`) | Long context fits the org profile and RFP in one prompt; structured output via tool use. Kept behind a provider interface so it can be swapped. |
 | File parsing | `pdf-parse` / `unpdf` (PDF), `mammoth` (DOCX) | |
 | Export | `docx` (DOCX), Puppeteer or Gotenberg (HTML → PDF) | |

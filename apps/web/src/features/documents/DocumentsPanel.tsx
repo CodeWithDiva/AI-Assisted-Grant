@@ -1,21 +1,21 @@
 import { DocumentKind, type OrgDocument } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
-import { FormError } from '../../components/form';
+import { Alert, Badge, EmptyState, SectionLabel, Select, Spinner } from '../../components/ui';
 import { documentsApi } from './api';
 
 const kindLabels: Record<DocumentKind, string> = {
   PAST_PROPOSAL: 'Past proposal',
   REPORT: 'Report',
-  RFP: 'Funder guidelines / RFP',
+  RFP: 'Funder guidelines',
   OTHER: 'Other',
 };
 
-const statusStyles: Record<OrgDocument['status'], string> = {
-  PENDING: 'bg-slate-100 text-slate-600',
-  PROCESSING: 'bg-amber-50 text-amber-700',
-  READY: 'bg-emerald-50 text-emerald-700',
-  FAILED: 'bg-red-50 text-red-700',
+const statusTones: Record<OrgDocument['status'], 'neutral' | 'amber' | 'green' | 'red'> = {
+  PENDING: 'neutral',
+  PROCESSING: 'amber',
+  READY: 'green',
+  FAILED: 'red',
 };
 
 export function DocumentsPanel({ orgId }: { orgId: string }) {
@@ -44,76 +44,77 @@ export function DocumentsPanel({ orgId }: { orgId: string }) {
   });
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-slate-600">
-        Upload past proposals, annual reports and funder guidelines (PDF, Word, text — up to 20 MB).
-        The text is read out of each file so the AI can reuse your own wording.
-      </p>
+    <div className="space-y-6">
+      <Alert>{upload.error?.message ?? remove.error?.message}</Alert>
 
-      <FormError message={upload.error?.message ?? remove.error?.message} />
-
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-4">
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Document type</span>
-          <select
+      <div className="rounded-lg border border-line bg-surface px-5 py-4">
+        <SectionLabel className="mb-3">Add a document</SectionLabel>
+        <div className="grid gap-4 sm:grid-cols-[200px_1fr] sm:items-end">
+          <Select
+            label="Type"
             value={kind}
             onChange={(event) => setKind(event.target.value as DocumentKind)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
           >
             {Object.values(DocumentKind).map((value) => (
               <option key={value} value={value}>
                 {kindLabels[value]}
               </option>
             ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">File</span>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".pdf,.docx,.txt,.md"
-            disabled={upload.isPending}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) upload.mutate(file);
-            }}
-            className="block text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
-          />
-        </label>
-        {upload.isPending ? <span className="text-sm text-slate-500">Reading file…</span> : null}
+          </Select>
+          <label className="block">
+            <span className="mb-1.5 block text-[12.5px] font-medium text-ink-600">
+              File — PDF, Word, text or Markdown, up to 20 MB
+            </span>
+            <input
+              ref={fileInput}
+              type="file"
+              accept=".pdf,.docx,.txt,.md"
+              disabled={upload.isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) upload.mutate(file);
+              }}
+              className="block w-full cursor-pointer text-[13.5px] text-ink-600 file:mr-3 file:h-9 file:cursor-pointer file:rounded-md file:border file:border-line-strong file:bg-paper-dark file:px-4 file:text-[13.5px] file:font-medium file:text-ink-800 hover:file:bg-line"
+            />
+          </label>
+        </div>
+        {upload.isPending ? (
+          <p className="mt-3 flex items-center gap-2 text-[13px] text-ink-600">
+            <span className="size-1.5 animate-pulse rounded-full bg-accent-600" />
+            Reading the file…
+          </p>
+        ) : null}
       </div>
 
       {documents.isPending ? (
-        <p className="text-slate-500">Loading documents…</p>
+        <Spinner label="Loading documents" />
       ) : documents.data?.length ? (
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
           {documents.data.map((doc) => (
-            <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <div className="truncate font-medium">{doc.fileName}</div>
-                <div className="text-sm text-slate-500">
+            <li key={doc.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-paper">
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[14.5px] text-ink-900">{doc.fileName}</div>
+                <div className="tabular mt-0.5 text-[12.5px] text-ink-400">
                   {kindLabels[doc.kind]} · {Math.max(1, Math.round(doc.sizeBytes / 1024))} KB ·{' '}
                   {doc.textLength.toLocaleString()} characters read
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className={`rounded-full px-2.5 py-1 text-xs ${statusStyles[doc.status]}`}>
-                  {doc.status}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => remove.mutate(doc.id)}
-                  className="text-sm text-slate-500 hover:text-red-600"
-                >
-                  Delete
-                </button>
-              </div>
+              <Badge tone={statusTones[doc.status]}>{doc.status}</Badge>
+              <button
+                type="button"
+                onClick={() => remove.mutate(doc.id)}
+                className="shrink-0 text-[13px] text-ink-400 hover:text-flag-red"
+              >
+                Delete
+              </button>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-slate-500">No documents uploaded yet.</p>
+        <EmptyState title="No documents yet">
+          Upload a past proposal or an annual report — drafts will then reuse your own wording and
+          figures.
+        </EmptyState>
       )}
     </div>
   );

@@ -1,0 +1,132 @@
+# API Reference
+
+Base URL: `http://localhost:4000/api/v1` (development).
+
+## Conventions
+
+- **Auth**: every endpoint needs a signed-in user except those marked **public**. The access token is sent as an httpOnly cookie (`gp_access`); the browser sends it automatically with `credentials: 'include'`. A `Bearer` token in the `Authorization` header also works.
+- **Roles**: routes under `/orgs/:orgId` require membership of that organization. Where a role is listed (OWNER / EDITOR), a VIEWER gets `403`.
+- **Validation**: request bodies are validated with Zod. A failure returns `400` with `{ "message": ["field: reason"], "error": "Bad Request", "statusCode": 400 }`.
+- **Rate limits**: 300 requests/minute per IP overall; 10/minute on `/auth/*`; 120/hour on the proposal and template routes (these can call the AI).
+
+## Auth
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/auth/register` | **public** — `{ name, email, password }` (password ≥ 8). Sets cookies, returns the user. |
+| POST | `/auth/login` | **public** — `{ email, password }`. |
+| POST | `/auth/refresh` | **public** — rotates the refresh token from the cookie. |
+| POST | `/auth/logout` | **public** — revokes the refresh token, clears cookies. `204`. |
+| GET | `/auth/me` | Current user. |
+
+## Organizations
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| POST | `/orgs` | — | `{ name, type: NONPROFIT\|STARTUP\|OTHER, country?, website? }`. Creator becomes OWNER. |
+| GET | `/orgs` | — | Organizations the user belongs to, each with the user's `role`. |
+| GET | `/orgs/:orgId` | member | |
+| PATCH | `/orgs/:orgId` | OWNER | |
+| GET | `/orgs/:orgId/members` | member | |
+| POST | `/orgs/:orgId/invitations` | OWNER | `{ email, role }`. Returns a `token` valid 7 days. |
+| DELETE | `/orgs/:orgId/members/:membershipId` | OWNER | Refuses to remove the last owner. |
+| POST | `/invitations/:token/accept` | — | The signed-in user's email must match the invitation. |
+
+## Organization profile and documents
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| GET | `/orgs/:orgId/profile` | member | `null` until saved. |
+| PUT | `/orgs/:orgId/profile` | OWNER, EDITOR | Mission, vision, beneficiaries, team, budget, programs, past results. |
+| GET | `/orgs/:orgId/documents` | member | Metadata plus `textLength`. |
+| POST | `/orgs/:orgId/documents` | OWNER, EDITOR | `multipart/form-data`: `file` + `kind` (`PAST_PROPOSAL`, `REPORT`, `RFP`, `OTHER`). PDF, DOCX, TXT, MD up to 20 MB. Text is extracted on upload. |
+| DELETE | `/orgs/:orgId/documents/:documentId` | OWNER, EDITOR | `204`. |
+
+## Funder templates
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| GET | `/orgs/:orgId/templates` | member | Starter library + the organization's own. |
+| GET | `/orgs/:orgId/templates/:templateId` | member | Sections, eligibility, evaluation criteria. |
+| POST | `/orgs/:orgId/templates/extract` | OWNER, EDITOR | **AI** — `{ documentId }` of an uploaded RFP. Returns a draft template for review; nothing is saved. |
+| POST | `/orgs/:orgId/templates` | OWNER, EDITOR | Saves the reviewed template (`sections[]` required). |
+| PATCH | `/orgs/:orgId/templates/:templateId` | OWNER, EDITOR | Library templates cannot be edited. Sending `sections` replaces them all. |
+| DELETE | `/orgs/:orgId/templates/:templateId` | OWNER, EDITOR | `204`. |
+
+## Proposals
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| POST | `/orgs/:orgId/proposals` | OWNER, EDITOR | `{ templateId, title, requestedAmount? }`. Copies the template's sections onto the proposal. |
+| GET | `/orgs/:orgId/proposals` | member | Includes progress and the next deadline. |
+| GET | `/orgs/:orgId/proposals/:proposalId` | member | With all sections and their text. |
+| PATCH | `/orgs/:orgId/proposals/:proposalId` | OWNER, EDITOR | `{ title?, status?, requestedAmount? }`. `SUBMITTED` stamps `submittedAt`. |
+| DELETE | `/orgs/:orgId/proposals/:proposalId` | OWNER, EDITOR | `204`. |
+| PATCH | `/orgs/:orgId/proposals/:proposalId/sections/:sectionId` | OWNER, EDITOR | `{ text }`. Saves a version when the text changed. |
+| GET | `/orgs/:orgId/proposals/:proposalId/sections/:sectionId/versions` | member | Last 20 versions, newest first. |
+| POST | `/…/sections/:sectionId/versions/:versionId/restore` | OWNER, EDITOR | Restores that version as the current text. |
+
+### AI drafting (server-sent events)
+
+`POST /orgs/:orgId/proposals/:proposalId/sections/:sectionId/generate` — body `{ instruction? }`
+`POST /orgs/:orgId/proposals/:proposalId/sections/:sectionId/refine` — body `{ action, instruction? }` where action is `SHORTEN`, `EXPAND`, `TONE_FORMAL`, `TONE_PLAIN` or `CUSTOM`.
+
+Both stream `text/event-stream`:
+
+```
+event: delta
+data: {"text":"We request 50,000 USD "}
+
+event: done
+data: { …the saved section… }
+
+event: error
+data: {"message":"AI is not configured — ANTHROPIC_API_KEY is missing"}
+```
+
+The generated text is saved and a version recorded before `done` is sent.
+
+### Review
+
+| Method | Path | Notes |
+|--------|------|-------|
+| POST | `/orgs/:orgId/proposals/:proposalId/compliance` | Word/character limits, empty sections, leftover `[NEEDS INPUT: …]` placeholders and missing deadline are checked in code; scoring against the funder's criteria is done by the AI. Without an API key the code checks still run. |
+| POST | `/orgs/:orgId/proposals/:proposalId/fit-score` | **AI** — 0-100 fit against the funder's eligibility, with reasons and gaps. |
+
+## Deadlines
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| GET | `/orgs/:orgId/deadlines?scope=all\|open` | member | Includes `daysRemaining` (negative when overdue). |
+| POST | `/orgs/:orgId/deadlines` | OWNER, EDITOR | `{ title, type, dueAt, proposalId?, templateId?, reminderOffsetsDays? }`. Defaults to reminders 14/7/3/1 days before. |
+| PATCH | `/orgs/:orgId/deadlines/:deadlineId` | OWNER, EDITOR | `{ completed: true }` marks it done. |
+| DELETE | `/orgs/:orgId/deadlines/:deadlineId` | OWNER, EDITOR | `204`. |
+| GET | `/orgs/:orgId/deadlines/:deadlineId/ics` | member | Calendar file for Google/Outlook/Apple. |
+| POST | `/orgs/:orgId/deadlines/run-reminders` | OWNER | Runs the reminder job now instead of waiting for 08:00. Returns `{ sent }`. |
+
+## Exports
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| POST | `/orgs/:orgId/proposals/:proposalId/exports` | OWNER, EDITOR | `{ format: "DOCX" \| "PDF" }`. Builds the file and stores it. |
+| GET | `/orgs/:orgId/proposals/:proposalId/exports` | member | Last 20 exports. |
+| GET | `/orgs/:orgId/exports/:exportId/download` | member | Returns the file as an attachment. |
+
+## Admin (platform administrators only)
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/admin/stats` | Users, organizations, proposals by status, documents, templates. |
+| GET | `/admin/ai-usage?days=30` | Calls, tokens and average latency per AI feature, plus failures. |
+
+A user becomes an administrator by setting `platformRole = 'ADMIN'` on their row:
+
+```sql
+UPDATE users SET "platformRole" = 'ADMIN' WHERE email = 'you@example.com';
+```
+
+## Health
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/health` | **public** — `{ status, database, version, timestamp }`. Use it for uptime checks. |

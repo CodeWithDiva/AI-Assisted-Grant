@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { AuthCard, Field, FormError, SubmitButton } from '../../components/form';
+import { Alert, Button, Field } from '../../components/ui';
 import { authApi } from './api';
 import { useAuth } from './AuthProvider';
+import { AuthShell } from './AuthShell';
 
 export function RegisterPage() {
   const navigate = useNavigate();
@@ -26,27 +27,29 @@ export function RegisterPage() {
   };
 
   return (
-    <AuthCard
+    <AuthShell
       title="Create your account"
-      subtitle={
+      subtitle="Two minutes to set up, then your first draft."
+      footer={
         <>
           Already registered?{' '}
-          <Link className="text-brand-600 hover:underline" to="/login">
+          <Link to="/login" className="font-medium text-accent-600 hover:underline">
             Sign in
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <FormError message={register.error?.message} />
+        <Alert>{register.error?.message}</Alert>
         <Field
           label="Full name"
+          autoComplete="name"
           required
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
         <Field
-          label="Email"
+          label="Work email"
           type="email"
           autoComplete="email"
           required
@@ -59,11 +62,14 @@ export function RegisterPage() {
           autoComplete="new-password"
           required
           minLength={8}
+          hint="At least 8 characters."
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <SubmitButton pending={register.isPending}>Create account</SubmitButton>
+        <Button type="submit" variant="primary" disabled={register.isPending} className="w-full">
+          {register.isPending ? 'Creating…' : 'Create account'}
+        </Button>
       </form>
-    </AuthCard>
+    </AuthShell>
   );
 }

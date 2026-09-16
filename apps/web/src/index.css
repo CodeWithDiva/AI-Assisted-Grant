@@ -1,14 +1,101 @@
 @import 'tailwindcss';
 
+/*
+ * Design language: an editorial, paper-like surface for a writing tool.
+ * Warm neutrals instead of cool greys, a serif for anything that reads as a document,
+ * monospace for counts and metadata, and a single deep-green accent.
+ */
 @theme {
-  --color-brand-50: #eef5ff;
-  --color-brand-100: #d9e8ff;
-  --color-brand-500: #3b7bf6;
-  --color-brand-600: #2563eb;
-  --color-brand-700: #1d4ed8;
-  --color-brand-900: #172554;
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: 'Newsreader', Georgia, 'Times New Roman', serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Paper and ink */
+  --color-paper: #faf8f5;
+  --color-paper-dark: #f3f0ea;
+  --color-surface: #ffffff;
+  --color-line: #e7e2d8;
+  --color-line-strong: #d6cfc1;
+
+  --color-ink-900: #16181c;
+  --color-ink-800: #2c2f35;
+  --color-ink-600: #565b64;
+  --color-ink-400: #878d97;
+  --color-ink-300: #a8adb6;
+
+  /* Accent: deep forest green */
+  --color-accent-50: #eef4f1;
+  --color-accent-100: #d8e8e1;
+  --color-accent-300: #7fae9d;
+  --color-accent-600: #16624a;
+  --color-accent-700: #114e3b;
+  --color-accent-900: #0b3327;
+
+  /* Status */
+  --color-flag-red: #9b2033;
+  --color-flag-red-soft: #fbeced;
+  --color-flag-amber: #8a5a00;
+  --color-flag-amber-soft: #fbf1df;
+  --color-flag-green: #1d6b46;
+  --color-flag-green-soft: #e7f2ea;
+  --color-flag-blue: #1d4f7c;
+  --color-flag-blue-soft: #e8f0f7;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
 }
 
-body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    background-color: var(--color-paper);
+    color: var(--color-ink-800);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+  }
+
+  /* Numbers line up in tables, counts and money columns. */
+  table,
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  ::selection {
+    background-color: var(--color-accent-100);
+    color: var(--color-ink-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent-600);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    font: inherit;
+  }
+
+  /* A quieter scrollbar than the default Windows one. */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-line-strong) transparent;
+  }
+}
+
+@utility eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-ink-400);
 }

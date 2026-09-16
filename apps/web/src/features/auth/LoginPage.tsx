@@ -1,9 +1,10 @@
 import { useMutation } from '@tanstack/react-query';
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { AuthCard, Field, FormError, SubmitButton } from '../../components/form';
+import { Alert, Button, Field } from '../../components/ui';
 import { authApi } from './api';
 import { useAuth } from './AuthProvider';
+import { AuthShell } from './AuthShell';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -25,19 +26,20 @@ export function LoginPage() {
   };
 
   return (
-    <AuthCard
+    <AuthShell
       title="Sign in"
-      subtitle={
+      subtitle="Pick up where you left off."
+      footer={
         <>
-          New here?{' '}
-          <Link className="text-brand-600 hover:underline" to="/register">
-            Create an account
+          No account yet?{' '}
+          <Link to="/register" className="font-medium text-accent-600 hover:underline">
+            Create one
           </Link>
         </>
       }
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <FormError message={login.error?.message} />
+        <Alert>{login.error?.message}</Alert>
         <Field
           label="Email"
           type="email"
@@ -54,8 +56,10 @@ export function LoginPage() {
           value={password}
           onChange={(event) => setPassword(event.target.value)}
         />
-        <SubmitButton pending={login.isPending}>Sign in</SubmitButton>
+        <Button type="submit" variant="primary" disabled={login.isPending} className="w-full">
+          {login.isPending ? 'Signing in…' : 'Sign in'}
+        </Button>
       </form>
-    </AuthCard>
+    </AuthShell>
   );
 }
