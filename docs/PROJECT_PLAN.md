@@ -32,16 +32,29 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 - S3 / S3-compatible storage driver, tested against a local S3 server
 - Fixed a rate-limit bug that could sign people out during normal use
 - Demo data script (`scripts/seed-demo.mjs`) and a smoke test that now covers the team flows
+- Section formatting (bold, italics, lists) in the editor and in DOCX/PDF exports
+- HTML emails for reminders and invitations
+- Playwright browser tests (6 flows), run in CI against the production build
+- "Days left" and reminder timing now count calendar days
+- Sentry error reporting (off until a DSN is set) and an error screen for pages that fail to load
+- Deploy workflow (Render + Vercel after CI passes), `render.yaml`, and `scripts/ai-check.mjs` for the live AI check
+
+### Still needed from the client before launch
+
+- Anthropic API key (with a monthly spend limit), then run `node scripts/ai-check.mjs`
+- Answers to the open questions in §2, and two or three real RFPs to test template import and drafting against
+- UAT participants (two or three grant writers) for the Day 13 round
+- Production accounts: database, Render, Vercel, S3 bucket, Resend with a verified domain, Sentry (optional)
 
 ### Deliberate changes from the original design
 
 | Planned | Built | Why |
 |---------|-------|-----|
-| TipTap rich-text editor | Plain-text sections with live word counts | Funders count words, not formatting; it keeps DOCX/PDF export exact and removes three dependencies. Rich text stays a Phase 2 item. |
+| TipTap rich-text editor | Text editor with a formatting toolbar (bold, italics, lists) stored as lightweight markup | Funders count words, not layout; the markup keeps word counts and DOCX/PDF export exact and avoids a heavy editor dependency. |
 | BullMQ + Redis for background work | In-process scheduler (`@nestjs/schedule`) for the daily reminder job | Generation streams straight to the browser, so the only recurring job is reminders. No Redis to run or pay for; move to a queue when the API scales past one instance. |
 | Puppeteer/Chromium for PDF | `pdfkit` | No 150 MB browser download in the image, no headless-Chromium failures in containers. |
 | `claude-sonnet-5` + `claude-haiku-4-5` | `claude-opus-5` (override with `ANTHROPIC_MODEL`) | One model to tune and cache against; the model is a single env var to change. |
-| Playwright E2E suite | Unit tests + a scripted API smoke test in CI | Covers the real end-to-end path today; browser tests are Phase 2. |
+| Playwright E2E suite | Built in v0.2.0: 6 browser flows, plus unit tests and an API smoke test, all in CI | As planned. |
 
 ### Local development setup (no Docker)
 

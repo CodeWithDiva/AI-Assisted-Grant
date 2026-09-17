@@ -84,7 +84,10 @@ export class EmailService {
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .slice(0, 50);
-      const file = join(PREVIEW_DIR, `${new Date().toISOString().replace(/[:.]/g, '-')}-${slug}.html`);
+      const file = join(
+        PREVIEW_DIR,
+        `${new Date().toISOString().replace(/[:.]/g, '-')}-${slug}.html`,
+      );
       await writeFile(file, message.html, 'utf8');
       return file;
     } catch {

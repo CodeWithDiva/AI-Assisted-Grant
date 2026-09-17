@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import type { CreateDeadlineInput, DeadlineView, UpdateDeadlineInput } from '@grant/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { calendarDaysUntil } from './days.util';
 import { buildIcs } from './ics.util';
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class DeadlinesService {
@@ -144,7 +143,7 @@ export class DeadlinesService {
       proposalTitle: deadline.proposal?.title ?? null,
       templateId: deadline.template?.id ?? null,
       templateName: deadline.template?.name ?? null,
-      daysRemaining: Math.ceil((deadline.dueAt.getTime() - Date.now()) / DAY_MS),
+      daysRemaining: calendarDaysUntil(deadline.dueAt),
     };
   }
 }

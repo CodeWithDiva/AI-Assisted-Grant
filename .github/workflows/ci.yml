@@ -74,3 +74,61 @@ jobs:
         run: |
           npx --yes wait-on http://localhost:4000/api/v1/health --timeout 60000
           bash scripts/smoke-test.sh http://localhost:4000/api/v1
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: build
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: grant_platform
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/grant_platform?schema=public
+      JWT_ACCESS_SECRET: ci-access-secret
+      JWT_REFRESH_SECRET: ci-refresh-secret
+      PORT: 4000
+      WEB_ORIGIN: http://localhost:4173
+      VITE_API_URL: http://localhost:4000/api/v1
+      E2E_WEB_URL: http://localhost:4173
+      E2E_API_URL: http://localhost:4000/api/v1
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @grant/shared build
+      - run: pnpm --filter @grant/api exec prisma migrate deploy
+      - run: pnpm --filter @grant/api db:seed
+      - run: pnpm --filter @grant/api build
+      - run: pnpm --filter @grant/web build
+      - run: pnpm --filter @grant/e2e exec playwright install --with-deps chromium
+
+      - name: Start the API and the built web app
+        run: |
+          node apps/api/dist/main.js > api.log 2>&1 &
+          pnpm --filter @grant/web exec vite preview > web.log 2>&1 &
+          npx --yes wait-on http://localhost:4000/api/v1/health http://localhost:4173 --timeout 60000
+
+      - name: Run the browser tests
+        run: pnpm e2e
+
+      - name: Keep the report and server logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-report
+          path: |
+            apps/e2e/playwright-report
+            apps/e2e/test-results
+            api.log
+            web.log
+          retention-days: 7

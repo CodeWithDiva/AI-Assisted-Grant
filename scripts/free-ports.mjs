@@ -8,13 +8,17 @@ const ports = process.argv.slice(2).map(Number).filter(Boolean);
 function listeningPids(port) {
   try {
     if (process.platform === 'win32') {
-      const output = execSync('netstat -ano -p tcp', { encoding: 'utf8' });
+      // No "-p tcp": that lists IPv4 only, and Vite on Windows listens on IPv6 (::1).
+      const output = execSync('netstat -ano', { encoding: 'utf8' });
       return [
         ...new Set(
           output
             .split(/\r?\n/)
             .map((line) => line.trim().split(/\s+/))
-            .filter((cols) => cols[3] === 'LISTENING' && cols[1]?.endsWith(`:${port}`))
+            .filter(
+              (cols) =>
+                cols[0] === 'TCP' && cols[3] === 'LISTENING' && cols[1]?.endsWith(`:${port}`),
+            )
             .map((cols) => cols[4]),
         ),
       ];

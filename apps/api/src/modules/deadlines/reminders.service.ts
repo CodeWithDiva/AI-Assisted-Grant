@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Cron } from '@nestjs/schedule';
+import { Sentry } from '../../common/monitoring/sentry';
 import type { Env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { deadlineReminderEmail } from '../email/email-templates';
 import { EmailService } from '../email/email.service';
+import { calendarDaysUntil } from './days.util';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const HORIZON_DAYS = 60;
@@ -22,8 +24,14 @@ export class RemindersService {
   /** Runs every morning; each reminder is recorded so it is never sent twice. */
   @Cron('0 8 * * *')
   async runDaily(): Promise<void> {
-    const sent = await this.run();
-    if (sent) this.logger.log(`Sent ${sent} deadline reminder(s)`);
+    try {
+      const sent = await this.run();
+      if (sent) this.logger.log(`Sent ${sent} deadline reminder(s)`);
+    } catch (error) {
+      // No request is waiting on a scheduled job, so nobody would see this failure otherwise.
+      this.logger.error('Deadline reminders failed', error instanceof Error ? error.stack : error);
+      Sentry.captureException(error);
+    }
   }
 
   async run(organizationId?: string): Promise<number> {
@@ -54,7 +62,7 @@ export class RemindersService {
     let sentCount = 0;
 
     for (const deadline of deadlines) {
-      const daysRemaining = Math.ceil((deadline.dueAt.getTime() - now.getTime()) / DAY_MS);
+      const daysRemaining = calendarDaysUntil(deadline.dueAt, now);
       const alreadySent = new Set(deadline.reminders.map((reminder) => reminder.offsetDays));
       const due = deadline.reminderOffsetsDays
         .filter((offset) => daysRemaining <= offset && !alreadySent.has(offset))

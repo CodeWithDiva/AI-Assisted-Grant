@@ -7,6 +7,7 @@ import { RequireAuth } from '../features/auth/RequireAuth';
 import { OrgProvider } from '../features/organizations/OrgProvider';
 import { AppLayout } from './AppLayout';
 import { ComingSoonPage } from './ComingSoonPage';
+import { RouteError } from './RouteError';
 
 /** Each page is its own chunk, so the first load only downloads what it shows. */
 function page(loader: () => Promise<Record<string, unknown>>, name: string) {
@@ -17,6 +18,7 @@ function page(loader: () => Promise<Record<string, unknown>>, name: string) {
 export const router = createBrowserRouter([
   {
     element: <AuthProvider />,
+    errorElement: <RouteError />,
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
@@ -35,87 +37,95 @@ export const router = createBrowserRouter([
                 element: <AppLayout />,
                 children: [
                   {
-                    index: true,
-                    element: page(
-                      () => import('../features/dashboard/DashboardPage'),
-                      'DashboardPage',
-                    ),
+                    errorElement: <RouteError />,
+                    children: [
+                      {
+                        index: true,
+                        element: page(
+                          () => import('../features/dashboard/DashboardPage'),
+                          'DashboardPage',
+                        ),
+                      },
+                      {
+                        path: 'proposals',
+                        element: page(
+                          () => import('../features/proposals/ProposalsPage'),
+                          'ProposalsPage',
+                        ),
+                      },
+                      {
+                        path: 'proposals/new',
+                        element: page(
+                          () => import('../features/proposals/NewProposalPage'),
+                          'NewProposalPage',
+                        ),
+                      },
+                      {
+                        path: 'proposals/:proposalId',
+                        element: page(
+                          () => import('../features/proposals/ProposalEditorPage'),
+                          'ProposalEditorPage',
+                        ),
+                      },
+                      {
+                        path: 'deadlines',
+                        element: page(
+                          () => import('../features/deadlines/DeadlinesPage'),
+                          'DeadlinesPage',
+                        ),
+                      },
+                      {
+                        path: 'templates',
+                        element: page(
+                          () => import('../features/templates/TemplatesPage'),
+                          'TemplatesPage',
+                        ),
+                      },
+                      {
+                        path: 'templates/:templateId',
+                        element: page(
+                          () => import('../features/templates/TemplateDetailPage'),
+                          'TemplateDetailPage',
+                        ),
+                      },
+                      {
+                        path: 'documents',
+                        element: page(
+                          () => import('../features/documents/DocumentsPage'),
+                          'DocumentsPage',
+                        ),
+                      },
+                      {
+                        path: 'profile',
+                        element: page(
+                          () => import('../features/profile/ProfilePage'),
+                          'ProfilePage',
+                        ),
+                      },
+                      {
+                        path: 'team',
+                        element: page(() => import('../features/team/TeamPage'), 'TeamPage'),
+                      },
+                      {
+                        path: 'settings',
+                        element: page(
+                          () => import('../features/settings/SettingsPage'),
+                          'SettingsPage',
+                        ),
+                      },
+                      {
+                        path: 'organizations',
+                        element: page(
+                          () => import('../features/organizations/OrganizationsPage'),
+                          'OrganizationsPage',
+                        ),
+                      },
+                      // Addresses used by earlier versions of the app.
+                      { path: 'organization', element: <Navigate to="/organizations" replace /> },
+                      { path: 'organization/:orgId', element: <Navigate to="/profile" replace /> },
+                      { path: '*', element: <ComingSoonPage title="Page not found" /> },
+                    ],
                   },
-                  {
-                    path: 'proposals',
-                    element: page(
-                      () => import('../features/proposals/ProposalsPage'),
-                      'ProposalsPage',
-                    ),
-                  },
-                  {
-                    path: 'proposals/new',
-                    element: page(
-                      () => import('../features/proposals/NewProposalPage'),
-                      'NewProposalPage',
-                    ),
-                  },
-                  {
-                    path: 'proposals/:proposalId',
-                    element: page(
-                      () => import('../features/proposals/ProposalEditorPage'),
-                      'ProposalEditorPage',
-                    ),
-                  },
-                  {
-                    path: 'deadlines',
-                    element: page(
-                      () => import('../features/deadlines/DeadlinesPage'),
-                      'DeadlinesPage',
-                    ),
-                  },
-                  {
-                    path: 'templates',
-                    element: page(
-                      () => import('../features/templates/TemplatesPage'),
-                      'TemplatesPage',
-                    ),
-                  },
-                  {
-                    path: 'templates/:templateId',
-                    element: page(
-                      () => import('../features/templates/TemplateDetailPage'),
-                      'TemplateDetailPage',
-                    ),
-                  },
-                  {
-                    path: 'documents',
-                    element: page(
-                      () => import('../features/documents/DocumentsPage'),
-                      'DocumentsPage',
-                    ),
-                  },
-                  {
-                    path: 'profile',
-                    element: page(() => import('../features/profile/ProfilePage'), 'ProfilePage'),
-                  },
-                  {
-                    path: 'team',
-                    element: page(() => import('../features/team/TeamPage'), 'TeamPage'),
-                  },
-                  {
-                    path: 'settings',
-                    element: page(
-                      () => import('../features/settings/SettingsPage'),
-                      'SettingsPage',
-                    ),
-                  },
-                  {
-                    path: 'organizations',
-                    element: page(
-                      () => import('../features/organizations/OrganizationsPage'),
-                      'OrganizationsPage',
-                    ),
-                  },
-                  // Addresses used by earlier versions of the app.
-                  { path: 'organization', element: <Navigate to="/organizations" replace /> },
-                  { path: 'organization/:orgId', element: <Navigate to="/profile" replace /> },
-                  { path: '*', element: <ComingSoonPage title="Page not found" /> },
                 ],
               },
             ],

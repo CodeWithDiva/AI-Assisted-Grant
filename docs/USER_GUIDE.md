@@ -54,6 +54,7 @@ In the editor:
 - The left column lists every section with its word count. Grey dot = not started, green = written, red = over the limit.
 - **Write with AI** drafts the selected section from your profile, documents and the funder's instructions; the text appears as it is written.
 - **Shorten**, **Expand**, **More formal**, **Plainer** rewrite what is there. The instruction box passes a specific request, e.g. *"lead with the 2026 flood response"*.
+- The toolbar above the text adds **bold** (Ctrl+B), *italics* (Ctrl+I), bulleted and numbered lists. **Preview** shows the section as it will look in the export, and the formatting carries into Word and PDF. Word counts ignore the formatting marks.
 - The bar under the text fills as you approach the word limit and turns red past it.
 - Edits save two seconds after you stop typing. **History** restores any earlier version, yours or the AI's.
 - The status badge above the title (Draft, In review, Submitted, Awarded, Rejected) is a dropdown — change it as the application moves on.

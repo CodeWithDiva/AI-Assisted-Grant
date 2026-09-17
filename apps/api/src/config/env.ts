@@ -39,6 +39,10 @@ const envSchema = z
     EMAIL_DRIVER: z.enum(['console', 'resend']).default('console'),
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().default('noreply@example.com'),
+
+    // Error reporting; leave SENTRY_DSN empty to turn it off.
+    SENTRY_DSN: optional,
+    SENTRY_ENVIRONMENT: optional,
   })
   .superRefine((env, ctx) => {
     if (env.STORAGE_DRIVER !== 's3') return;

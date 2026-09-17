@@ -25,7 +25,9 @@ export async function createWorkspace(prefix: string): Promise<Workspace> {
   const registered = await api.post('auth/register', { data: { name, email, password: PASSWORD } });
   expect(registered.ok()).toBeTruthy();
 
-  const org = await api.post('orgs', { data: { name: orgName, type: 'NONPROFIT', country: 'Pakistan' } });
+  const org = await api.post('orgs', {
+    data: { name: orgName, type: 'NONPROFIT', country: 'Pakistan' },
+  });
   expect(org.ok()).toBeTruthy();
 
   return { api, email, name, orgId: (await org.json()).id, orgName };
@@ -37,8 +39,18 @@ export async function createTemplate(workspace: Workspace, name: string): Promis
       name,
       funderName: 'E2E Foundation',
       sections: [
-        { title: 'Executive summary', instructions: 'The request and the change', wordLimit: 120, required: true },
-        { title: 'Statement of need', instructions: 'Local evidence', wordLimit: 200, required: true },
+        {
+          title: 'Executive summary',
+          instructions: 'The request and the change',
+          wordLimit: 120,
+          required: true,
+        },
+        {
+          title: 'Statement of need',
+          instructions: 'Local evidence',
+          wordLimit: 200,
+          required: true,
+        },
       ],
     },
   });
@@ -51,5 +63,7 @@ export async function signIn(page: Page, email: string, password = PASSWORD): Pr
   await page.getByLabel('Email').fill(email);
   await page.getByLabel('Password').fill(password);
   await page.getByRole('button', { name: 'Sign in' }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
+  await expect(page.getByRole('heading', { level: 1 })).toContainText(
+    /Good (morning|afternoon|evening)/,
+  );
 }

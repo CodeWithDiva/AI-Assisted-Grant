@@ -1,9 +1,4 @@
-import {
-  countWords,
-  ProposalStatus,
-  RefineAction,
-  type ProposalSectionView,
-} from '@grant/shared';
+import { countWords, ProposalStatus, RefineAction, type ProposalSectionView } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ClipboardCheck } from 'lucide-react';

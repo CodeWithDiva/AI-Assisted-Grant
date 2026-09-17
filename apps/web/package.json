@@ -1,6 +1,6 @@
 {
   "name": "@grant/web",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@grant/shared": "workspace:*",
+    "@sentry/react": "10.74.0",
     "@tanstack/react-query": "^5.102.8",
     "lucide-react": "^1.46.0",
     "react": "^19.3.0",

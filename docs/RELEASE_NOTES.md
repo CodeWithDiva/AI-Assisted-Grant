@@ -22,17 +22,37 @@ A redesign of the interface, a working team feature, and production file storage
 **Account and settings**
 - New Settings page: change your name, change your password (signs out every other session), edit the organization's details
 
+**Writing**
+- Formatting toolbar in the editor: bold, italics, bulleted and numbered lists, with Ctrl+B / Ctrl+I and a preview
+- Formatting is kept in the Word and PDF exports (real bold, italics and lists; numbering restarts per list)
+- AI drafts may now use lists and bold where they help; word counts and limits ignore formatting marks
+
+**Emails**
+- Deadline reminders and invitations are sent as designed HTML emails with a plain-text version
+- In development, every email is also saved as an HTML file in `apps/api/.email-previews/`
+
 **Storage**
 - `STORAGE_DRIVER=s3` now works with AWS S3 and S3-compatible services (Cloudflare R2, Backblaze B2, MinIO)
+
+**Reliability and operations**
+- Error reporting to Sentry for the API and the web app, switched on by setting `SENTRY_DSN` / `VITE_SENTRY_DSN`; proposal text, cookies and request bodies are never sent
+- An error screen replaces the blank page when a page fails to load, with a "newer version is ready" message when the app was updated while the tab was open
+- Deploy workflow: after CI passes on `main`, the API is deployed to Render and the web app to Vercel, then the API's health and version are checked
+- `render.yaml` blueprint for the API service
 
 **Fixes**
 - Normal page loads could hit the sign-in rate limit (`429`) and log people out — the tight limit now applies only to register, login and password change
 - Proposals no longer show a writing-progress bar once they are submitted or decided
+- "Days left" counted hours, so a deadline three days away could show "4 days left" early in the day and a reminder could go out a day early; it now counts calendar days everywhere
+- `pnpm dev` first frees ports 4000 and 5173 left over from a previous run, and the web app no longer silently moves to another port
+- Rebuilding the API while it runs no longer crashes the development server
 
 **Other**
 - `GET /health` reports whether the AI key is configured; the sidebar shows it
 - `scripts/seed-demo.mjs` loads a realistic demo workspace for client demos
 - The smoke test now covers team invitations, acceptance, viewer permissions, renaming and password changes
+- Playwright browser tests for sign-up and sign-in, writing and exporting a proposal, deadlines and team invitations; CI runs them against the production build
+- `scripts/ai-check.mjs` runs RFP extraction, drafting, rewriting, review and fit score once against the real AI, for use before demos and after prompt changes
 
 ## v0.1.0 (MVP)
 
@@ -43,10 +63,10 @@ Accounts and organizations with roles · organization profile and document uploa
 | # | Issue | Workaround / plan |
 |---|-------|-------------------|
 | 1 | **Scanned PDFs** produce no text, so template import fails on them | Upload a text PDF or Word file, or build the template by hand; OCR is Phase 2 |
-| 2 | **Section text is plain text** — no bold, italics or bullets in exports | Deliberate for the MVP; rich text is Phase 2 |
+| 2 | **Formatting is limited** to bold, italics and lists — no headings, tables or images inside a section | Enough for funder forms, which are mostly plain text; tables are Phase 2 |
 | 3 | **The reminder job runs inside the API process** | Fine for one instance; move it to a dedicated worker before scaling out |
 | 4 | **AI features need `ANTHROPIC_API_KEY`** — without it they return 503 | Everything else, including the code-based review checks, works without it |
-| 5 | **No end-to-end browser tests** — coverage is unit tests plus a scripted API smoke test | Playwright suite is Phase 2 |
+| 5 | **AI output not yet checked against real client RFPs** | Run `scripts/ai-check.mjs` and a UAT round with real funder calls once the API key and RFPs are available |
 | 6 | **Email address cannot be changed** from Settings | Change it in the database for now |
 
 ## Not in these releases (Phase 2)

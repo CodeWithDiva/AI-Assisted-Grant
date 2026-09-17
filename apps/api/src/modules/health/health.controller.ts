@@ -3,6 +3,7 @@ import { Controller, Get } from '@nestjs/common';
 import { Public } from '../../common/decorators/public.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
+import { APP_VERSION } from '../../config/version';
 
 @Controller('health')
 export class HealthController {
@@ -25,7 +26,7 @@ export class HealthController {
       status: database === 'up' ? 'ok' : 'degraded',
       database,
       ai: this.ai.isConfigured ? 'configured' : 'missing',
-      version: process.env.npm_package_version ?? '0.1.0',
+      version: APP_VERSION,
       timestamp: new Date().toISOString(),
     };
   }

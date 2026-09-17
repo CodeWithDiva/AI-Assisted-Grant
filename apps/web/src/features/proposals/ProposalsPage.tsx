@@ -18,6 +18,14 @@ import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { proposalsApi } from './api';
 import { statusLabels, statusTones } from './status';
 
+/** Same rule as the API: whole calendar days (UTC), so the table and deadlines page agree. */
+function calendarDaysUntil(due: Date): number {
+  const now = new Date();
+  const dueDay = Date.UTC(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate());
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  return Math.round((dueDay - today) / 864e5);
+}
+
 type Filter = 'ALL' | ProposalStatus;
 
 export function ProposalsPage() {
@@ -86,7 +94,7 @@ export function ProposalsPage() {
               <tbody className="divide-y divide-line">
                 {visible.map((proposal) => {
                   const due = proposal.nextDeadline ? new Date(proposal.nextDeadline) : null;
-                  const daysLeft = due ? Math.ceil((due.getTime() - Date.now()) / 864e5) : null;
+                  const daysLeft = due ? calendarDaysUntil(due) : null;
                   return (
                     <tr
                       key={proposal.id}

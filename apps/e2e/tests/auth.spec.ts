@@ -20,7 +20,8 @@ test('a new user signs up, creates an organization, signs out and back in', asyn
   await page.getByRole('button', { name: 'Create organization' }).click();
 
   await expect(page.getByRole('heading', { name: 'Organization profile' })).toBeVisible();
-  await expect(page.locator('aside')).toContainText(orgName);
+  // The sidebar's organization switcher shows the new organization.
+  await expect(page.locator('aside').first()).toContainText(orgName);
 
   await page.getByRole('button', { name: 'Account menu' }).click();
   await page.getByRole('menuitem', { name: 'Sign out' }).click();

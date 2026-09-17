@@ -30,7 +30,9 @@ describe('parseRichText', () => {
   });
 
   it('groups consecutive bullet and numbered lines into lists', () => {
-    const blocks = parseRichText('Outcomes:\n- 400 girls enrolled\n* 30 villages\n\n1. Hire\n2) Train');
+    const blocks = parseRichText(
+      'Outcomes:\n- 400 girls enrolled\n* 30 villages\n\n1. Hire\n2) Train',
+    );
     expect(blocks.map((block) => block.type)).toEqual(['paragraph', 'bullets', 'numbers']);
     expect(blocks[1]).toEqual({
       type: 'bullets',

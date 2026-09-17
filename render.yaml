@@ -1,0 +1,52 @@
+# Render Blueprint for the API (Render → New → Blueprint → pick this repo).
+# Secrets are marked `sync: false`: Render asks for them once when the Blueprint is created.
+# Deploys are triggered by .github/workflows/deploy.yml after CI passes, not on every push.
+services:
+  - type: web
+    name: grantpilot-api
+    runtime: docker
+    dockerfilePath: infra/docker/api.Dockerfile
+    dockerContext: .
+    plan: starter
+    region: frankfurt
+    healthCheckPath: /api/v1/health
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '4000'
+      - key: WEB_ORIGIN
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ANTHROPIC_MODEL
+        value: claude-opus-5
+      - key: STORAGE_DRIVER
+        value: s3
+      - key: MAX_UPLOAD_MB
+        value: '20'
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        sync: false
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: EMAIL_DRIVER
+        value: resend
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: SENTRY_DSN
+        sync: false

@@ -1,16 +1,22 @@
 import 'reflect-metadata';
 import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { NestFactory } from '@nestjs/core';
+import { HttpAdapterHost, NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { ReportingExceptionFilter } from './common/monitoring/reporting-exception.filter';
+import { initMonitoring } from './common/monitoring/sentry';
 import type { Env } from './config/env';
+import { APP_VERSION } from './config/version';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const config = app.get<ConfigService<Env, true>>(ConfigService);
+
+  initMonitoring(config, `grant-api@${APP_VERSION}`);
+  app.useGlobalFilters(new ReportingExceptionFilter(app.get(HttpAdapterHost).httpAdapter));
 
   // Section text can be long, but not unbounded.
   app.useBodyParser('json', { limit: '2mb' });
