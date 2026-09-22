@@ -202,12 +202,21 @@ export class TemplatesService {
       maxTokens: 12000,
     });
 
-    if (!result.data.sections?.length) {
+    // Many calls keep the section list in a separate application form, so a document with
+    // funder details but no sections is still useful; the user adds the sections on review.
+    const found = result.data;
+    const foundNothing =
+      !found.sections?.length &&
+      !found.eligibility?.length &&
+      !found.evaluationCriteria?.length &&
+      !found.funderName &&
+      !found.programName;
+    if (foundNothing) {
       throw new BadRequestException(
-        'No proposal sections were found in that document — check that it contains the funder guidelines',
+        'This does not look like funding guidelines — no funder, sections, eligibility or criteria were found in it',
       );
     }
-    return result.data;
+    return found;
   }
 
   private async requireOwnTemplate(organizationId: string, templateId: string): Promise<void> {

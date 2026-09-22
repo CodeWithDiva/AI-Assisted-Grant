@@ -155,7 +155,7 @@ export function ImportRfpPanel({ orgId, onClose }: { orgId: string; onClose: () 
         {busy ? (
           <p className="flex items-center gap-2 text-[13.5px] text-ink-600">
             <span className="size-1.5 animate-pulse rounded-full bg-accent-600" />
-            Reading the guidelines — this usually takes under a minute.
+            Reading the guidelines — usually under a minute, a few minutes when the AI is busy.
           </p>
         ) : null}
       </div>
@@ -210,6 +210,14 @@ function DraftReview({
             onChange={(event) => onChange({ ...draft, funderName: event.target.value })}
           />
         </div>
+
+        {draft.sections.length === 0 ? (
+          <Alert tone="amber">
+            No proposal sections were found in this document. Many funders put them in a separate
+            application form or template — upload that file instead, or add the sections below from
+            it. At least one section is needed to save.
+          </Alert>
+        ) : null}
 
         <div>
           <SectionLabel className="mb-2">Sections ({draft.sections.length})</SectionLabel>
@@ -271,6 +279,23 @@ function DraftReview({
           </button>
         </div>
 
+        {draft.evaluationCriteria?.length ? (
+          <div>
+            <SectionLabel className="mb-2">Scoring criteria found</SectionLabel>
+            <ul className="space-y-1.5 text-[13.5px] text-ink-600">
+              {draft.evaluationCriteria.map((criterion, index) => (
+                <li key={index} className="flex gap-2.5">
+                  <span className="mt-2 size-1 shrink-0 rounded-full bg-line-strong" />
+                  <span>
+                    {criterion.name}
+                    {criterion.weight ? ` (${criterion.weight}%)` : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         {draft.eligibility?.length ? (
           <div>
             <SectionLabel className="mb-2">Eligibility found</SectionLabel>
@@ -287,7 +312,7 @@ function DraftReview({
       </div>
 
       <div className="flex items-center gap-3 border-t border-line px-5 py-4">
-        <Button variant="primary" onClick={onSave} disabled={saving}>
+        <Button variant="primary" onClick={onSave} disabled={saving || draft.sections.length === 0}>
           {saving ? 'Saving…' : 'Save template'}
         </Button>
         <button
