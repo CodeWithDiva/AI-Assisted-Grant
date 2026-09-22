@@ -2,7 +2,7 @@ import { DocumentKind, type CreateTemplateInput, type ExtractedTemplate } from '
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Alert, Button, Field, SectionLabel } from '../../components/ui';
+import { Alert, Button, Field, FileDrop, SectionLabel } from '../../components/ui';
 import { documentsApi } from '../documents/api';
 import { templatesApi } from './api';
 
@@ -113,21 +113,13 @@ export function ImportRfpPanel({ orgId, onClose }: { orgId: string; onClose: () 
       <div className="space-y-5 px-5 py-5">
         <Alert>{error}</Alert>
 
-        <label className="block">
-          <span className="mb-1.5 block text-[12.5px] font-medium text-ink-600">
-            Upload a PDF, Word, text or Markdown file
-          </span>
-          <input
-            type="file"
-            accept=".pdf,.docx,.txt,.md"
-            disabled={busy}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) uploadAndExtract.mutate(file);
-            }}
-            className="block w-full cursor-pointer text-[13.5px] text-ink-600 file:mr-3 file:h-9 file:cursor-pointer file:rounded-md file:border file:border-accent-700 file:bg-accent-600 file:px-4 file:text-[13.5px] file:font-medium file:text-white hover:file:bg-accent-700"
-          />
-        </label>
+        <FileDrop
+          accept=".pdf,.docx,.txt,.md"
+          hint="The funder's call or guidelines: PDF, Word, text or Markdown."
+          busy={busy}
+          busyLabel="Reading the guidelines"
+          onFile={(file) => uploadAndExtract.mutate(file)}
+        />
 
         {rfps.length > 0 ? (
           <div>
@@ -198,7 +190,7 @@ function DraftReview({
       <div className="space-y-6 px-5 py-5">
         <Alert>{error}</Alert>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field
             label="Template name"
             value={draft.name}

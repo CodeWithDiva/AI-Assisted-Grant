@@ -1,23 +1,12 @@
-import type { DeadlineView, ProposalStatus, ProposalSummary } from '@grant/shared';
 import { useQuery } from '@tanstack/react-query';
-import {
-  ArrowRight,
-  CalendarClock,
-  CheckCircle2,
-  Circle,
-  FileText,
-  PenLine,
-  TrendingUp,
-} from 'lucide-react';
-import { Link, useNavigate } from 'react-router';
+import { ArrowRight, CalendarClock, CheckCircle2, Circle, FileText } from 'lucide-react';
+import { Link } from 'react-router';
 import {
   Badge,
   Card,
   CardHeader,
   DateTile,
   EmptyState,
-  formatMoney,
-  ProgressRing,
   relativeDays,
   Spinner,
 } from '../../components/ui';
@@ -29,14 +18,10 @@ import { proposalsApi } from '../proposals/api';
 import { statusLabels, statusTones } from '../proposals/status';
 import { teamApi } from '../team/api';
 import { templatesApi } from '../templates/api';
-
-const PIPELINE: { status: ProposalStatus; bar: string }[] = [
-  { status: 'DRAFT', bar: 'bg-ink-300' },
-  { status: 'IN_REVIEW', bar: 'bg-brass' },
-  { status: 'SUBMITTED', bar: 'bg-flag-blue' },
-  { status: 'AWARDED', bar: 'bg-accent-600' },
-  { status: 'REJECTED', bar: 'bg-flag-red/70' },
-];
+import { FocusCard } from './FocusCard';
+import { PipelineCard, FundingCard } from './PipelineCard';
+import { StatusMark } from './StatusMark';
+import { DashboardSkeleton } from './DashboardSkeleton';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -79,7 +64,7 @@ export function DashboardPage() {
 
   if (isLoading) return <Spinner />;
   if (!activeOrg) return <NoOrganizationNotice />;
-  if (proposals.isPending || deadlines.isPending) return <Spinner label="Loading your workspace" />;
+  if (proposals.isPending || deadlines.isPending) return <DashboardSkeleton />;
 
   const allProposals = proposals.data ?? [];
   const openDeadlines = (deadlines.data ?? []).filter((deadline) => !deadline.completedAt);
@@ -122,7 +107,7 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-[1.65fr_1fr]">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.65fr)_minmax(0,1fr)]">
         <FocusCard proposals={allProposals} deadlines={openDeadlines} />
         {setupDone < checklist.length ? (
           <Card padded={false}>
@@ -166,7 +151,7 @@ export function DashboardPage() {
 
       <PipelineCard proposals={allProposals} />
 
-      <div className="grid gap-5 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card padded={false}>
           <CardHeader
             title="Upcoming deadlines"
@@ -236,15 +221,7 @@ export function DashboardPage() {
                     to={`/proposals/${proposal.id}`}
                     className="flex items-center gap-3.5 px-5 py-3 hover:bg-paper"
                   >
-                    <ProgressRing
-                      value={
-                        proposal.sectionCount
-                          ? proposal.completedSections / proposal.sectionCount
-                          : 0
-                      }
-                      size={40}
-                      label={`${proposal.completedSections}/${proposal.sectionCount}`}
-                    />
+                    <StatusMark proposal={proposal} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-[14px] text-ink-900">{proposal.title}</div>
                       <div className="truncate text-[12.5px] text-ink-400">
@@ -266,231 +243,5 @@ export function DashboardPage() {
         </Card>
       </div>
     </div>
-  );
-}
-
-/** The single most useful thing to do next: the draft with the nearest deadline. */
-function FocusCard({
-  proposals,
-  deadlines,
-}: {
-  proposals: ProposalSummary[];
-  deadlines: DeadlineView[];
-}) {
-  const navigate = useNavigate();
-  const writable = proposals.filter((p) => p.status === 'DRAFT' || p.status === 'IN_REVIEW');
-
-  const urgent = deadlines
-    .filter((deadline) => deadline.proposalId && writable.some((p) => p.id === deadline.proposalId))
-    .sort((a, b) => a.daysRemaining - b.daysRemaining)[0];
-
-  const proposal = urgent
-    ? writable.find((p) => p.id === urgent.proposalId)
-    : [...writable].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-
-  if (!proposal) {
-    return (
-      <div className="relative overflow-hidden rounded-[11px] bg-night-900 p-7 text-white">
-        <div className="font-mono text-[11px] tracking-[0.1em] text-brass uppercase">Up next</div>
-        <p className="mt-3 max-w-md font-display text-[26px] leading-snug">
-          Nothing in draft. Start a proposal from a funder&apos;s template.
-        </p>
-        <button
-          type="button"
-          onClick={() => navigate('/proposals/new')}
-          className="mt-6 inline-flex h-9 items-center gap-2 rounded-md bg-white px-4 text-[13.5px] font-medium text-night-900 hover:bg-paper"
-        >
-          <PenLine className="size-4" /> Start a proposal
-        </button>
-        <FocusTexture />
-      </div>
-    );
-  }
-
-  const progress = proposal.sectionCount ? proposal.completedSections / proposal.sectionCount : 0;
-
-  return (
-    <div className="relative overflow-hidden rounded-[11px] bg-night-900 p-7 text-white">
-      <div className="relative flex flex-wrap items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
-          <div className="font-mono text-[11px] tracking-[0.1em] text-brass uppercase">Up next</div>
-          <h2 className="mt-2.5 font-display text-[26px] leading-snug">{proposal.title}</h2>
-          <p className="mt-1 text-[13.5px] text-white/55">
-            {proposal.funderName ?? proposal.templateName ?? 'No funder recorded'}
-            {proposal.requestedAmount
-              ? ` · ${formatMoney(proposal.requestedAmount, proposal.currency)}`
-              : ''}
-          </p>
-        </div>
-
-        {urgent ? (
-          <div className="text-right">
-            <div
-              className={`tabular font-display text-[46px] leading-none ${
-                urgent.daysRemaining < 0
-                  ? 'text-[#f08a9a]'
-                  : urgent.daysRemaining <= 7
-                    ? 'text-brass'
-                    : 'text-white'
-              }`}
-            >
-              {Math.abs(urgent.daysRemaining)}
-            </div>
-            <div className="mt-1 text-[12px] text-white/50">
-              {urgent.daysRemaining < 0
-                ? 'days overdue'
-                : urgent.daysRemaining === 1
-                  ? 'day left'
-                  : 'days left'}
-            </div>
-          </div>
-        ) : null}
-      </div>
-
-      <div className="relative mt-7">
-        <div className="mb-2 flex items-baseline justify-between text-[12.5px]">
-          <span className="text-white/60">
-            {proposal.completedSections} of {proposal.sectionCount} sections written
-          </span>
-          <span className="tabular font-mono text-white/50">{Math.round(progress * 100)}%</span>
-        </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-accent-300"
-            style={{ width: `${progress * 100}%` }}
-          />
-        </div>
-      </div>
-
-      <div className="relative mt-6 flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={() => navigate(`/proposals/${proposal.id}`)}
-          className="inline-flex h-9 items-center gap-2 rounded-md bg-white px-4 text-[13.5px] font-medium text-night-900 hover:bg-paper"
-        >
-          <PenLine className="size-4" /> Continue writing
-        </button>
-        {urgent ? (
-          <span className="inline-flex h-9 items-center px-2 text-[13px] text-white/50">
-            {urgent.title} ·{' '}
-            {new Date(urgent.dueAt).toLocaleDateString(undefined, {
-              day: 'numeric',
-              month: 'short',
-            })}
-          </span>
-        ) : null}
-      </div>
-
-      <FocusTexture />
-    </div>
-  );
-}
-
-/** A large, faint section mark in the corner — texture without an image. */
-function FocusTexture() {
-  return (
-    <span
-      aria-hidden
-      className="pointer-events-none absolute -right-4 -bottom-20 hidden font-display text-[220px] leading-none text-white/[0.03] sm:block select-none"
-    >
-      §
-    </span>
-  );
-}
-
-function PipelineCard({ proposals }: { proposals: ProposalSummary[] }) {
-  const total = proposals.length;
-  const currency = proposals.find((p) => p.currency)?.currency ?? 'USD';
-
-  const rows = PIPELINE.map((stage) => {
-    const items = proposals.filter((p) => p.status === stage.status);
-    return {
-      ...stage,
-      count: items.length,
-      amount: items.reduce((sum, p) => sum + (p.requestedAmount ?? 0), 0),
-    };
-  });
-
-  return (
-    <Card padded={false}>
-      <CardHeader
-        title="Pipeline"
-        icon={TrendingUp}
-        action={
-          <span className="text-[13px] text-ink-400">
-            {total} proposal{total === 1 ? '' : 's'}
-          </span>
-        }
-      />
-      <div className="px-5 py-5">
-        <div className="flex h-2.5 gap-0.5 overflow-hidden rounded-full bg-paper-dark">
-          {total
-            ? rows
-                .filter((row) => row.count)
-                .map((row) => (
-                  <div
-                    key={row.status}
-                    className={row.bar}
-                    style={{ width: `${(row.count / total) * 100}%` }}
-                    title={`${statusLabels[row.status]}: ${row.count}`}
-                  />
-                ))
-            : null}
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-5">
-          {rows.map((row) => (
-            <div key={row.status}>
-              <div className="flex items-center gap-2 text-[12.5px] text-ink-600">
-                <span className={`size-2 rounded-full ${row.bar}`} />
-                {statusLabels[row.status]}
-              </div>
-              <div className="tabular mt-1 text-[22px] leading-tight font-semibold text-ink-900">
-                {row.count}
-              </div>
-              <div className="tabular text-[12.5px] text-ink-400">
-                {row.amount ? formatMoney(row.amount, currency) : '—'}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
-function FundingCard({ proposals }: { proposals: ProposalSummary[] }) {
-  const currency = proposals.find((p) => p.currency)?.currency ?? 'USD';
-  const sum = (statuses: ProposalStatus[]) =>
-    proposals
-      .filter((p) => statuses.includes(p.status))
-      .reduce((total, p) => total + (p.requestedAmount ?? 0), 0);
-  const decided = proposals.filter((p) => p.status === 'AWARDED' || p.status === 'REJECTED').length;
-  const awarded = proposals.filter((p) => p.status === 'AWARDED').length;
-
-  return (
-    <Card>
-      <div className="eyebrow">Funding</div>
-      <div className="mt-4 space-y-4">
-        <div>
-          <div className="text-[12.5px] text-ink-400">Awarded</div>
-          <div className="tabular text-[26px] font-semibold text-accent-700">
-            {formatMoney(sum(['AWARDED']), currency)}
-          </div>
-        </div>
-        <div>
-          <div className="text-[12.5px] text-ink-400">Requested and still open</div>
-          <div className="tabular text-[20px] font-semibold text-ink-900">
-            {formatMoney(sum(['DRAFT', 'IN_REVIEW', 'SUBMITTED']), currency)}
-          </div>
-        </div>
-        <div>
-          <div className="text-[12.5px] text-ink-400">Success rate</div>
-          <div className="tabular text-[20px] font-semibold text-ink-900">
-            {decided ? `${Math.round((awarded / decided) * 100)}%` : '—'}
-          </div>
-        </div>
-      </div>
-    </Card>
   );
 }

@@ -85,43 +85,46 @@ export function NewProposalPage() {
         {templates.isPending ? (
           <Spinner label="Loading templates" />
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(templates.data ?? []).map((template) => {
-              const selected = template.id === templateId;
-              return (
-                <button
-                  key={template.id}
-                  type="button"
-                  onClick={() => setTemplateId(template.id)}
-                  className={`relative rounded-[11px] border bg-surface p-4 text-left shadow-card transition-colors ${
-                    selected
-                      ? 'border-accent-600 ring-3 ring-accent-100'
-                      : 'border-line hover:border-line-strong'
-                  }`}
-                >
-                  {selected ? (
-                    <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-accent-600 text-white">
-                      <Check className="size-3.5" strokeWidth={2.5} />
-                    </span>
-                  ) : null}
-                  <div className="flex items-center gap-2 text-[12px] text-ink-400">
-                    <LibraryBig className="size-3.5" />
-                    {template.isLibrary
-                      ? 'Starter library'
-                      : (template.funderName ?? 'Your template')}
-                  </div>
-                  <div className="mt-1.5 pr-6 font-display text-[17px] leading-snug text-ink-900">
-                    {template.name}
-                  </div>
-                  <div className="tabular mt-2 text-[12.5px] text-ink-600">
-                    {template.sectionCount} sections
-                    {template.totalWordLimit
-                      ? ` · ${template.totalWordLimit.toLocaleString()} words`
-                      : ''}
-                  </div>
-                </button>
-              );
-            })}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {[...(templates.data ?? [])]
+              // The organization's own templates first: they are the ones it is applying to.
+              .sort((a, b) => Number(a.isLibrary) - Number(b.isLibrary))
+              .map((template) => {
+                const selected = template.id === templateId;
+                return (
+                  <button
+                    key={template.id}
+                    type="button"
+                    onClick={() => setTemplateId(template.id)}
+                    className={`relative rounded-[11px] border bg-surface p-4 text-left shadow-card transition-colors ${
+                      selected
+                        ? 'border-accent-600 ring-3 ring-accent-100'
+                        : 'border-line hover:border-line-strong'
+                    }`}
+                  >
+                    {selected ? (
+                      <span className="absolute top-3 right-3 flex size-5 items-center justify-center rounded-full bg-accent-600 text-white">
+                        <Check className="size-3.5" strokeWidth={2.5} />
+                      </span>
+                    ) : null}
+                    <div className="flex items-center gap-2 text-[12px] text-ink-400">
+                      <LibraryBig className="size-3.5" />
+                      {template.isLibrary
+                        ? 'Starter library'
+                        : (template.funderName ?? 'Your template')}
+                    </div>
+                    <div className="mt-1.5 pr-6 font-display text-[17px] leading-snug text-ink-900">
+                      {template.name}
+                    </div>
+                    <div className="tabular mt-2 text-[12.5px] text-ink-600">
+                      {template.sectionCount} sections
+                      {template.totalWordLimit
+                        ? ` · ${template.totalWordLimit.toLocaleString()} words`
+                        : ''}
+                    </div>
+                  </button>
+                );
+              })}
           </div>
         )}
       </div>

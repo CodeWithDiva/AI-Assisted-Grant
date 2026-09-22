@@ -29,7 +29,7 @@ export function ProfilePage() {
   const filled = checks.filter(Boolean).length;
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[1fr_280px]">
+    <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
       <div className="min-w-0 space-y-6">
         <PageTitle
           title="Organization profile"

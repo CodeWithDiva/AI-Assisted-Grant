@@ -90,7 +90,7 @@ export function ProfileForm({ orgId }: { orgId: string }) {
           value={form.teamSummary ?? ''}
           onChange={(event) => setForm({ ...form, teamSummary: event.target.value })}
         />
-        <div className="grid gap-4 sm:grid-cols-[1fr_120px]">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[minmax(0,1fr)_120px]">
           <Field
             label="Annual budget"
             type="number"

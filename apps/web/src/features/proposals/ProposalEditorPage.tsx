@@ -11,6 +11,7 @@ import {
   LimitBar,
   Menu,
   SectionLabel,
+  Select,
   Spinner,
 } from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
@@ -19,6 +20,7 @@ import { CompliancePanel } from './CompliancePanel';
 import { ExportButtons } from './ExportButtons';
 import { applyFormat, FormattingToolbar, RichPreview } from './Formatting';
 import { statusLabels, statusTones } from './status';
+import { VersionHistory } from './VersionHistory';
 
 const refineLabels: Record<RefineAction, string> = {
   SHORTEN: 'Shorten',
@@ -221,10 +223,27 @@ export function ProposalEditorPage() {
         />
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[250px_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[250px_minmax(0,1fr)]">
         <nav className="h-fit lg:sticky lg:top-9">
-          <SectionLabel className="mb-2.5">Sections</SectionLabel>
-          <ul className="overflow-hidden rounded-lg border border-line bg-surface">
+          {/* Phones: a compact picker, so the text box is not pushed below a long list. */}
+          <Select
+            label="Section"
+            className="lg:hidden"
+            value={selected?.id ?? ''}
+            onChange={(event) => {
+              const section = sections.find((item) => item.id === event.target.value);
+              if (section) openSection(section);
+            }}
+          >
+            {sections.map((section, index) => (
+              <option key={section.id} value={section.id}>
+                {index + 1}. {section.title} ({section.wordCount}
+                {section.wordLimit ? `/${section.wordLimit}` : ''} words)
+              </option>
+            ))}
+          </Select>
+          <SectionLabel className="mb-2.5 hidden lg:block">Sections</SectionLabel>
+          <ul className="hidden overflow-hidden rounded-lg border border-line bg-surface lg:block">
             {sections.map((section) => {
               const active = selected?.id === section.id;
               const over = section.wordLimit ? section.wordCount > section.wordLimit : false;
@@ -418,62 +437,5 @@ export function ProposalEditorPage() {
         )}
       </div>
     </div>
-  );
-}
-
-function VersionHistory({
-  orgId,
-  proposalId,
-  sectionId,
-  onRestore,
-}: {
-  orgId: string;
-  proposalId: string;
-  sectionId: string;
-  onRestore: (section: ProposalSectionView) => void;
-}) {
-  const versions = useQuery({
-    queryKey: ['versions', orgId, proposalId, sectionId],
-    queryFn: () => proposalsApi.versions(orgId, proposalId, sectionId),
-  });
-
-  const restore = useMutation({
-    mutationFn: (versionId: string) =>
-      proposalsApi.restoreVersion(orgId, proposalId, sectionId, versionId),
-    onSuccess: onRestore,
-  });
-
-  if (versions.isPending) return <Spinner label="Loading history" />;
-  if (!versions.data?.length) return <p className="text-[13.5px] text-ink-400">No history yet.</p>;
-
-  return (
-    <>
-      <SectionLabel className="mb-2.5">Version history</SectionLabel>
-      <ul className="divide-y divide-line rounded-md border border-line">
-        {versions.data.map((version) => (
-          <li key={version.id} className="flex items-center gap-3 px-3.5 py-2.5">
-            <Badge tone={version.source === 'AI' ? 'blue' : 'neutral'}>
-              {version.source === 'AI' ? 'AI' : 'You'}
-            </Badge>
-            <div className="min-w-0 flex-1">
-              <div className="tabular text-[12.5px] text-ink-600">
-                {new Date(version.createdAt).toLocaleString()} · {version.wordCount} words
-              </div>
-              <div className="truncate text-[12.5px] text-ink-400">
-                {version.text.slice(0, 110)}
-              </div>
-            </div>
-            <button
-              type="button"
-              disabled={restore.isPending}
-              onClick={() => restore.mutate(version.id)}
-              className="shrink-0 text-[13px] text-accent-600 hover:underline disabled:opacity-50"
-            >
-              Restore
-            </button>
-          </li>
-        ))}
-      </ul>
-    </>
   );
 }

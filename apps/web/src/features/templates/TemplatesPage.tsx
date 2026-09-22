@@ -49,7 +49,7 @@ export function TemplatesPage() {
 
       <section>
         <SectionLabel className="mb-3">Your templates</SectionLabel>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {own.map((template) => (
             <TemplateCard key={template.id} template={template} />
           ))}
@@ -77,7 +77,7 @@ export function TemplatesPage() {
 
       <section>
         <SectionLabel className="mb-3">Starter library</SectionLabel>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {library.map((template) => (
             <TemplateCard key={template.id} template={template} />
           ))}

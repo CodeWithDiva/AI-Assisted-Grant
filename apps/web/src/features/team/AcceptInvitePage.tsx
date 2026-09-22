@@ -79,7 +79,7 @@ export function AcceptInvitePage() {
                 ) : invitation.status === 'ACCEPTED' ? (
                   <Alert tone="green">This invitation has already been accepted.</Alert>
                 ) : !user ? (
-                  <div className="grid gap-2">
+                  <div className="grid grid-cols-1 gap-2">
                     <Link
                       to={`/register?next=${next}`}
                       className="inline-flex h-10 items-center justify-center rounded-md border border-accent-700 bg-accent-600 text-[14px] font-medium text-white hover:bg-accent-700"

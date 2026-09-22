@@ -38,7 +38,7 @@ function Section({
 }) {
   return (
     <Card padded={false}>
-      <div className="grid gap-6 p-6 md:grid-cols-[220px_1fr]">
+      <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-[220px_1fr]">
         <div>
           <div className="flex items-center gap-2 text-[14.5px] font-medium text-ink-900">
             <Icon className="size-4 text-ink-400" strokeWidth={1.8} />
@@ -261,7 +261,7 @@ function OrganizationSection() {
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Select
             label="Type"
             disabled={!canEdit}

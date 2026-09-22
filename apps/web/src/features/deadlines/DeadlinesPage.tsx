@@ -127,7 +127,7 @@ export function DeadlinesPage() {
               <IconButton icon={X} label="Close" onClick={() => setAdding(false)} />
             </div>
             <Alert>{create.error?.message}</Alert>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Field
                 label="What is due"
                 required

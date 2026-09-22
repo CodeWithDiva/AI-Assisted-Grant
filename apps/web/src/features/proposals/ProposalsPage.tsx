@@ -1,4 +1,4 @@
-import type { ProposalStatus } from '@grant/shared';
+import type { ProposalStatus, ProposalSummary } from '@grant/shared';
 import { useQuery } from '@tanstack/react-query';
 import { FileText, Plus } from 'lucide-react';
 import { useState } from 'react';
@@ -11,6 +11,8 @@ import {
   formatMoney,
   LimitBar,
   PageTitle,
+  relativeDays,
+  Skeleton,
   Spinner,
   Tabs,
 } from '../../components/ui';
@@ -27,6 +29,35 @@ function calendarDaysUntil(due: Date): number {
 }
 
 type Filter = 'ALL' | ProposalStatus;
+
+const isWritable = (status: ProposalStatus) => status === 'DRAFT' || status === 'IN_REVIEW';
+
+function deadlineTone(days: number): string {
+  return days < 0 ? 'text-flag-red' : days <= 7 ? 'text-flag-amber' : 'text-ink-400';
+}
+
+function formatDue(due: Date): string {
+  return due.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Where a proposal stands: section progress while it is being written, otherwise its outcome. */
+function ProgressCell({ proposal }: { proposal: ProposalSummary }) {
+  if (isWritable(proposal.status)) {
+    return (
+      <>
+        <div className="tabular mb-1.5 text-[12px] text-ink-600">
+          {proposal.completedSections} of {proposal.sectionCount} sections
+        </div>
+        <LimitBar used={proposal.completedSections} limit={proposal.sectionCount} />
+      </>
+    );
+  }
+  return (
+    <span className="text-[12.5px] text-ink-400">
+      {proposal.status === 'SUBMITTED' ? 'Sent to funder' : 'Decision received'}
+    </span>
+  );
+}
 
 export function ProposalsPage() {
   const { activeOrg, isLoading } = useOrgs();
@@ -76,102 +107,127 @@ export function ProposalsPage() {
         </div>
 
         {proposals.isPending ? (
-          <div className="px-5">
-            <Spinner label="Loading proposals" />
+          <div className="divide-y divide-line border-t border-line">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="flex items-center gap-6 px-5 py-4">
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-2/5" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+                <Skeleton className="hidden h-3 w-32 md:block" />
+                <Skeleton className="h-5 w-20 rounded-full" />
+              </div>
+            ))}
           </div>
         ) : visible.length ? (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left">
-              <thead>
-                <tr className="border-b border-line text-[12px] text-ink-400">
-                  <th className="px-5 py-3 font-medium">Proposal</th>
-                  <th className="px-3 py-3 font-medium">Progress</th>
-                  <th className="px-3 py-3 text-right font-medium">Requested</th>
-                  <th className="px-3 py-3 font-medium">Next deadline</th>
-                  <th className="px-5 py-3 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-line">
-                {visible.map((proposal) => {
-                  const due = proposal.nextDeadline ? new Date(proposal.nextDeadline) : null;
-                  const daysLeft = due ? calendarDaysUntil(due) : null;
-                  return (
-                    <tr
-                      key={proposal.id}
+          <>
+            {/* Phones: one card per proposal instead of a table that would scroll sideways. */}
+            <ul className="divide-y divide-line border-t border-line md:hidden">
+              {visible.map((proposal) => {
+                const due = proposal.nextDeadline ? new Date(proposal.nextDeadline) : null;
+                const daysLeft = due ? calendarDaysUntil(due) : null;
+                return (
+                  <li key={proposal.id}>
+                    <button
+                      type="button"
                       onClick={() => navigate(`/proposals/${proposal.id}`)}
-                      className="cursor-pointer hover:bg-paper"
+                      className="w-full px-5 py-4 text-left hover:bg-paper"
                     >
-                      <td className="max-w-[320px] px-5 py-3.5">
-                        <div className="truncate font-display text-[16px] text-ink-900">
-                          {proposal.title}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="font-display text-[16px] leading-snug text-ink-900">
+                            {proposal.title}
+                          </div>
+                          <div className="mt-0.5 truncate text-[12.5px] text-ink-400">
+                            {proposal.funderName ?? proposal.templateName ?? 'No template'}
+                          </div>
                         </div>
-                        <div className="mt-0.5 truncate text-[12.5px] text-ink-400">
-                          {[proposal.funderName, proposal.templateName]
-                            .filter(Boolean)
-                            .join(' · ') || 'No template'}
-                        </div>
-                      </td>
-                      <td className="w-44 px-3 py-3.5">
-                        {proposal.status === 'DRAFT' || proposal.status === 'IN_REVIEW' ? (
-                          <>
-                            <div className="tabular mb-1.5 text-[12px] text-ink-600">
-                              {proposal.completedSections} of {proposal.sectionCount} sections
-                            </div>
-                            <LimitBar
-                              used={proposal.completedSections}
-                              limit={proposal.sectionCount}
-                            />
-                          </>
-                        ) : (
-                          <span className="text-[12.5px] text-ink-400">
-                            {proposal.status === 'SUBMITTED'
-                              ? 'Sent to funder'
-                              : 'Decision received'}
-                          </span>
-                        )}
-                      </td>
-                      <td className="tabular px-3 py-3.5 text-right text-[14px] text-ink-800">
-                        {formatMoney(proposal.requestedAmount, proposal.currency)}
-                      </td>
-                      <td className="px-3 py-3.5 text-[13.5px]">
-                        {due ? (
-                          <>
-                            <div className="text-ink-800">
-                              {due.toLocaleDateString(undefined, {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              })}
-                            </div>
-                            <div
-                              className={`text-[12px] ${
-                                daysLeft! < 0
-                                  ? 'text-flag-red'
-                                  : daysLeft! <= 7
-                                    ? 'text-flag-amber'
-                                    : 'text-ink-400'
-                              }`}
-                            >
-                              {daysLeft! < 0
-                                ? `${Math.abs(daysLeft!)} days late`
-                                : `in ${daysLeft} days`}
-                            </div>
-                          </>
-                        ) : (
-                          <span className="text-ink-300">—</span>
-                        )}
-                      </td>
-                      <td className="px-5 py-3.5">
                         <Badge tone={statusTones[proposal.status]}>
                           {statusLabels[proposal.status]}
                         </Badge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                      <div className="mt-3">
+                        <ProgressCell proposal={proposal} />
+                      </div>
+                      <div className="tabular mt-3 flex items-center justify-between text-[12.5px]">
+                        <span className="text-ink-800">
+                          {formatMoney(proposal.requestedAmount, proposal.currency)}
+                        </span>
+                        {due && daysLeft !== null ? (
+                          <span className={deadlineTone(daysLeft)}>
+                            {formatDue(due)} · {relativeDays(daysLeft)}
+                          </span>
+                        ) : (
+                          <span className="text-ink-300">No deadline</span>
+                        )}
+                      </div>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full min-w-[760px] text-left">
+                <thead>
+                  <tr className="border-b border-line text-[12px] text-ink-400">
+                    <th className="px-5 py-3 font-medium">Proposal</th>
+                    <th className="px-3 py-3 font-medium">Progress</th>
+                    <th className="px-3 py-3 text-right font-medium">Requested</th>
+                    <th className="px-3 py-3 font-medium">Next deadline</th>
+                    <th className="px-5 py-3 font-medium">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-line">
+                  {visible.map((proposal) => {
+                    const due = proposal.nextDeadline ? new Date(proposal.nextDeadline) : null;
+                    const daysLeft = due ? calendarDaysUntil(due) : null;
+                    return (
+                      <tr
+                        key={proposal.id}
+                        onClick={() => navigate(`/proposals/${proposal.id}`)}
+                        className="cursor-pointer hover:bg-paper"
+                      >
+                        <td className="max-w-[320px] px-5 py-3.5">
+                          <div className="truncate font-display text-[16px] text-ink-900">
+                            {proposal.title}
+                          </div>
+                          <div className="mt-0.5 truncate text-[12.5px] text-ink-400">
+                            {[proposal.funderName, proposal.templateName]
+                              .filter(Boolean)
+                              .join(' · ') || 'No template'}
+                          </div>
+                        </td>
+                        <td className="w-44 px-3 py-3.5">
+                          <ProgressCell proposal={proposal} />
+                        </td>
+                        <td className="tabular px-3 py-3.5 text-right text-[14px] text-ink-800">
+                          {formatMoney(proposal.requestedAmount, proposal.currency)}
+                        </td>
+                        <td className="px-3 py-3.5 text-[13.5px]">
+                          {due && daysLeft !== null ? (
+                            <>
+                              <div className="text-ink-800">{formatDue(due)}</div>
+                              <div className={`text-[12px] ${deadlineTone(daysLeft)}`}>
+                                {relativeDays(daysLeft)}
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-ink-300">—</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5">
+                          <Badge tone={statusTones[proposal.status]}>
+                            {statusLabels[proposal.status]}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
         ) : (
           <EmptyState
             icon={FileText}
