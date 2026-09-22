@@ -76,7 +76,7 @@ export class ComplianceService {
         issues,
         criteria: [],
         summary:
-          'Limits and placeholders were checked. The AI review of the funder criteria needs ANTHROPIC_API_KEY to be set.',
+          'Limits and placeholders were checked. The AI review of the funder criteria needs an AI provider to be set up.',
         checkedAt: new Date().toISOString(),
       };
     }

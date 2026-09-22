@@ -26,6 +26,9 @@ export class HealthController {
       status: database === 'up' ? 'ok' : 'degraded',
       database,
       ai: this.ai.isConfigured ? 'configured' : 'missing',
+      aiProvider: this.ai.description
+        ? `${this.ai.description.provider} (${this.ai.description.model})`
+        : null,
       version: APP_VERSION,
       timestamp: new Date().toISOString(),
     };

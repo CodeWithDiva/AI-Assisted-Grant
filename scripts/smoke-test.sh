@@ -5,7 +5,7 @@
 #   bash scripts/smoke-test.sh [base-url]
 #
 # Creates a throwaway user and organization, exercises every main flow, then deletes
-# what it created. AI steps are skipped automatically when ANTHROPIC_API_KEY is unset.
+# what it created. AI steps are skipped automatically when no AI provider is set up.
 
 set -euo pipefail
 

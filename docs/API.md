@@ -135,4 +135,5 @@ UPDATE users SET "platformRole" = 'ADMIN' WHERE email = 'you@example.com';
 
 | Method | Path | Notes |
 |--------|------|-------|
-| GET | `/health` | **public** — `{ status, database, ai, version, timestamp }`. `ai` is `configured` or `missing`. Use it for uptime checks. |
+| GET | `/health` | **public** — `{ status, database, ai, aiProvider, version, timestamp }`. `ai` is `configured` or `missing`; `aiProvider` names the provider and model. Use it for uptime checks. |
+| POST | `/cron/reminders` | **public**, but needs header `x-cron-secret: <CRON_SECRET>`. Runs the reminder job for every organization; `{ sent }`. `404` when `CRON_SECRET` is not set. |

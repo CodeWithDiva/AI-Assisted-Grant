@@ -20,6 +20,8 @@ async function bootstrap() {
 
   // Section text can be long, but not unbounded.
   app.useBodyParser('json', { limit: '2mb' });
+  const proxyHops = config.get('TRUST_PROXY_HOPS', { infer: true });
+  if (proxyHops) app.set('trust proxy', proxyHops);
   app.setGlobalPrefix('api/v1');
   app.use(helmet());
   app.use(cookieParser());

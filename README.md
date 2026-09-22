@@ -7,6 +7,7 @@ Drafts grant proposals against funder templates and tracks application deadlines
 | [docs/PROJECT_PLAN.md](docs/PROJECT_PLAN.md)   | Scope, architecture, data model, AI pipeline, 15-day plan, progress |
 | [docs/USER_GUIDE.md](docs/USER_GUIDE.md)       | How to use the app, end to end                                      |
 | [docs/API.md](docs/API.md)                     | Every endpoint, roles and rate limits                               |
+| [docs/FREE_HOSTING.md](docs/FREE_HOSTING.md)   | Run it on free plans only (Gemini, Neon, Render, Vercel, Brevo)     |
 | [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)       | Production setup and the pre-launch checklist                       |
 | [docs/RELEASE_NOTES.md](docs/RELEASE_NOTES.md) | What shipped, and the known issues                                  |
 
@@ -43,7 +44,7 @@ render.yaml   Render blueprint for the API
 - Node.js 22+ (24 recommended)
 - pnpm (`npm install -g pnpm`)
 - PostgreSQL 16+ running locally
-- Anthropic API key — only for the AI features; without it everything else works and AI endpoints answer `503`
+- An AI key, only for the AI features: a **free Google Gemini key** (https://aistudio.google.com/apikey, no card) or Groq, or a paid Anthropic key. Without one everything else works and AI endpoints answer `503`
 - Docker is **not** required for local development
 
 ## Setup
@@ -55,6 +56,7 @@ pnpm install
 # 2. Environment files
 cp apps/api/.env.example apps/api/.env      # set the DATABASE_URL password
 cp apps/web/.env.example apps/web/.env
+# optional: paste a free Gemini key into AI_API_KEY in apps/api/.env
 
 # 3. Create the database, tables and starter templates
 pnpm db:migrate

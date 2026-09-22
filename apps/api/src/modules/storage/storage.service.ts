@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import type { Env } from '../../config/env';
+import { PrismaService } from '../../prisma/prisma.service';
 
 interface StorageDriver {
   put(key: string, contents: Buffer, contentType?: string): Promise<void>;
@@ -85,6 +86,41 @@ class S3Driver implements StorageDriver {
 }
 
 /**
+ * Free hosting: file contents live in PostgreSQL, so no bucket or extra account is needed.
+ * The organization id is the first part of every key, and deleting an organization removes
+ * its files with it.
+ */
+class DatabaseDriver implements StorageDriver {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async put(key: string, contents: Buffer, contentType?: string): Promise<void> {
+    const organizationId = key.split('/')[0];
+    await this.prisma.storedFile.create({
+      data: {
+        key,
+        organizationId,
+        contentType,
+        size: contents.length,
+        data: new Uint8Array(contents),
+      },
+    });
+  }
+
+  async get(key: string): Promise<Buffer> {
+    const file = await this.prisma.storedFile.findUnique({
+      where: { key },
+      select: { data: true },
+    });
+    if (!file) throw new NotFoundException('Stored file not found');
+    return Buffer.from(file.data);
+  }
+
+  async delete(key: string): Promise<void> {
+    await this.prisma.storedFile.deleteMany({ where: { key } });
+  }
+}
+
+/**
  * Files are addressed by a storage key ("orgId/uuid.pdf"). Callers never know which
  * driver is behind it, so switching to S3 is a configuration change only.
  */
@@ -93,8 +129,12 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
   private readonly driver: StorageDriver;
 
-  constructor(config: ConfigService<Env, true>) {
-    if (config.get('STORAGE_DRIVER', { infer: true }) === 's3') {
+  constructor(config: ConfigService<Env, true>, prisma: PrismaService) {
+    const driver = config.get('STORAGE_DRIVER', { infer: true });
+    if (driver === 'database') {
+      this.driver = new DatabaseDriver(prisma);
+      this.logger.log('Storing files in the database');
+    } else if (driver === 's3') {
       const accessKeyId = config.get('S3_ACCESS_KEY_ID', { infer: true });
       const secretAccessKey = config.get('S3_SECRET_ACCESS_KEY', { infer: true });
       const client = new S3Client({

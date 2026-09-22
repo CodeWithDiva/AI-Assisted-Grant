@@ -188,13 +188,16 @@ function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
         </NavLink>
 
         {health.data ? (
-          <div className="mt-2 flex items-center gap-2 px-2.5 text-[12px] text-white/45">
+          <div
+            className="mt-2 flex items-center gap-2 px-2.5 text-[12px] text-white/45"
+            title={health.data.aiProvider ?? 'No AI provider configured'}
+          >
             <span
               className={`size-1.5 rounded-full ${
                 health.data.ai === 'configured' ? 'bg-accent-300' : 'bg-brass'
               }`}
             />
-            {health.data.ai === 'configured' ? 'AI drafting ready' : 'AI key not set'}
+            {health.data.ai === 'configured' ? 'AI drafting ready' : 'AI not set up'}
           </div>
         ) : null}
       </div>

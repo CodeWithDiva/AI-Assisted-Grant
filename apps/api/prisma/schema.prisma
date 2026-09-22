@@ -146,6 +146,7 @@ model Organization {
   deadlines       Deadline[]
   aiGenerations   AiGeneration[]
   auditLogs       AuditLog[]
+  storedFiles     StoredFile[]
 
   @@map("organizations")
 }
@@ -303,9 +304,9 @@ model Proposal {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  template     FunderTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  owner        User?           @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  template     FunderTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  owner        User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   sections     ProposalSection[]
   deadlines    Deadline[]
   exports      Export[]
@@ -460,4 +461,20 @@ model AuditLog {
 
   @@index([organizationId, createdAt])
   @@map("audit_logs")
+}
+
+/// File contents kept in PostgreSQL when STORAGE_DRIVER=database: the free option, with no
+/// bucket to set up. Fine for a few hundred MB; switch to S3 for anything larger.
+model StoredFile {
+  key            String   @id
+  organizationId String
+  contentType    String?
+  size           Int
+  data           Bytes
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@map("stored_files")
 }

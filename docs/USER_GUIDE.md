@@ -16,7 +16,7 @@ GrantPilot drafts grant proposals against a funder's own template and keeps trac
 | **Organization → Team** | Members, roles and invitations |
 | **Settings** | Your name, password and the organization's details |
 
-The dot at the bottom of the sidebar shows whether AI drafting is available (**AI drafting ready**) or the API key still needs to be set (**AI key not set**).
+The dot at the bottom of the sidebar shows whether AI drafting is available (**AI drafting ready**) or no AI provider is set up yet (**AI not set up**).
 
 ## 1. Create your account and organization
 

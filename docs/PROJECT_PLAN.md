@@ -38,13 +38,14 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 - "Days left" and reminder timing now count calendar days
 - Sentry error reporting (off until a DSN is set) and an error screen for pages that fail to load
 - Deploy workflow (Render + Vercel after CI passes), `render.yaml`, and `scripts/ai-check.mjs` for the live AI check
+- Free-plan setup: Gemini/Groq/Ollama AI providers, files in the database, Brevo email, reminders from GitHub Actions, Vercel `/api` proxy (`docs/FREE_HOSTING.md`)
 
 ### Still needed from the client before launch
 
-- Anthropic API key (with a monthly spend limit), then run `node scripts/ai-check.mjs`
+- An AI key: a free Gemini key is enough to start (Anthropic later if wanted), then run `node scripts/ai-check.mjs`
 - Answers to the open questions in §2, and two or three real RFPs to test template import and drafting against
 - UAT participants (two or three grant writers) for the Day 13 round
-- Production accounts: database, Render, Vercel, S3 bucket, Resend with a verified domain, Sentry (optional)
+- Accounts on the free plans: Neon, Render, Vercel, Brevo (Sentry optional); see `docs/FREE_HOSTING.md`
 
 ### Deliberate changes from the original design
 
@@ -53,7 +54,7 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 | TipTap rich-text editor | Text editor with a formatting toolbar (bold, italics, lists) stored as lightweight markup | Funders count words, not layout; the markup keeps word counts and DOCX/PDF export exact and avoids a heavy editor dependency. |
 | BullMQ + Redis for background work | In-process scheduler (`@nestjs/schedule`) for the daily reminder job | Generation streams straight to the browser, so the only recurring job is reminders. No Redis to run or pay for; move to a queue when the API scales past one instance. |
 | Puppeteer/Chromium for PDF | `pdfkit` | No 150 MB browser download in the image, no headless-Chromium failures in containers. |
-| `claude-sonnet-5` + `claude-haiku-4-5` | `claude-opus-5` (override with `ANTHROPIC_MODEL`) | One model to tune and cache against; the model is a single env var to change. |
+| `claude-sonnet-5` + `claude-haiku-4-5` | One configurable provider: `claude-opus-5` by default for paid use, Gemini's free tier (or Groq / Ollama) for a zero-budget start | One model to tune against; switching provider or model is an environment change. |
 | Playwright E2E suite | Built in v0.2.0: 6 browser flows, plus unit tests and an API smoke test, all in CI | As planned. |
 
 ### Local development setup (no Docker)

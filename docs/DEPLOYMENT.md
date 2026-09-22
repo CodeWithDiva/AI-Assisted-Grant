@@ -1,5 +1,7 @@
 # Deployment Guide
 
+> **No budget?** [FREE_HOSTING.md](FREE_HOSTING.md) sets the whole app up on free plans (Gemini, Neon, Render, Vercel, Brevo). This guide covers the paid, production-grade setup.
+
 Three pieces go to production: the **web** app (static files), the **api** (Node container) and **PostgreSQL**. No Docker is needed on a developer machine — CI builds the image.
 
 ## 1. Accounts to create
@@ -11,7 +13,7 @@ Three pieces go to production: the **web** app (static files), the **api** (Node
 | **Vercel** | Web app | Static build, no server code |
 | **AWS S3** (or R2 / B2) | Uploaded and exported files | One private bucket; an IAM role or user with `s3:GetObject`, `s3:PutObject`, `s3:DeleteObject` on it |
 | **Resend** | Reminder emails | Verify the sending domain |
-| **Anthropic Console** | AI features | Create an API key, set a monthly spend limit |
+| **Anthropic Console** (or Google AI Studio / Groq) | AI features | Create an API key, set a monthly spend limit. Gemini and Groq have free tiers; see FREE_HOSTING.md |
 | **Sentry** (optional) | Error tracking | One project for the API (Node) and one for the web app (React); copy each DSN |
 
 ## 2. Environment variables (API)
@@ -26,10 +28,17 @@ DATABASE_URL=postgresql://user:pass@host/db?sslmode=require
 JWT_ACCESS_SECRET=<64 random characters>
 JWT_REFRESH_SECRET=<a different 64 random characters>
 
+AI_PROVIDER=anthropic                       # or gemini / groq / ollama / openai-compatible
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_MODEL=claude-opus-5
+# For gemini / groq instead: AI_API_KEY=... (AI_MODEL optional)
 
-STORAGE_DRIVER=s3
+# Only if the API is behind a proxy: Render = 1, Vercel /api proxy + Render = 2
+TRUST_PROXY_HOPS=1
+# Lets .github/workflows/reminders.yml run the daily reminders (any long random string)
+CRON_SECRET=
+
+STORAGE_DRIVER=s3                           # or "database" to keep files in PostgreSQL
 MAX_UPLOAD_MB=20
 S3_BUCKET=grantpilot-files
 S3_REGION=eu-west-1
@@ -40,7 +49,7 @@ S3_SECRET_ACCESS_KEY=
 S3_ENDPOINT=
 S3_FORCE_PATH_STYLE=false
 
-EMAIL_DRIVER=resend
+EMAIL_DRIVER=resend                         # or "brevo" with BREVO_API_KEY
 RESEND_API_KEY=re_...
 EMAIL_FROM="GrantPilot <noreply@yourdomain.com>"
 
@@ -90,7 +99,7 @@ docker build -f infra/docker/api.Dockerfile -t grantpilot-api .
 
 On Render: *New → Blueprint*, pick this repo. `render.yaml` defines the service (Docker, health check `/api/v1/health`, generated JWT secrets), and Render asks once for the values marked secret. Auto-deploy is off in the blueprint because the deploy workflow (section 7) triggers it after CI passes.
 
-The reminder job runs inside the API process at 08:00 server time. If you ever run more than one API instance, move that job to a single worker instance so reminders are not sent twice — the `deadline_reminders` table makes duplicates unlikely but not impossible.
+The reminder job runs inside the API process at 08:00 server time. With `CRON_SECRET` set, `.github/workflows/reminders.yml` also triggers it every morning through `POST /api/v1/cron/reminders`, which covers hosts that put the API to sleep. Each reminder is recorded, so running both never sends one twice. If you ever run more than one API instance, rely on the workflow and keep one scheduler.
 
 ## 5. Web app
 

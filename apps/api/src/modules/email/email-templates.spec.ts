@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deadlineReminderEmail, escapeHtml, invitationEmail } from './email-templates';
+import { parseSender } from './email.service';
 
 describe('escapeHtml', () => {
   it('neutralises markup in user-provided values', () => {
@@ -61,5 +62,19 @@ describe('invitationEmail', () => {
     expect(email.html).toContain('href="https://app.example.org/invite/abc"');
     expect(email.text).toContain('Accept the invitation: https://app.example.org/invite/abc');
     expect(email.text).toContain('as editor');
+  });
+});
+
+describe('parseSender', () => {
+  it('splits a display name from the address', () => {
+    expect(parseSender('GrantPilot <noreply@example.org>')).toEqual({
+      name: 'GrantPilot',
+      email: 'noreply@example.org',
+    });
+    expect(parseSender('"Roshni Trust" <a@b.org>')).toEqual({
+      name: 'Roshni Trust',
+      email: 'a@b.org',
+    });
+    expect(parseSender('plain@example.org')).toEqual({ email: 'plain@example.org' });
   });
 });

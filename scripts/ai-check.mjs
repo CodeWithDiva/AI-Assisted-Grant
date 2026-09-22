@@ -1,5 +1,5 @@
 // Exercises every AI feature once against a running API, with the real Anthropic key.
-// Run it after setting ANTHROPIC_API_KEY, before a demo, and after changing a prompt.
+// Run it after setting up the AI provider (see .env.example), before a demo, and after changing a prompt.
 //
 //   node scripts/seed-demo.mjs          # once, creates the demo workspace
 //   node scripts/ai-check.mjs [base-url] [--keep]
@@ -136,7 +136,7 @@ async function main() {
   });
   if (health.ai !== 'configured') {
     throw new Error(
-      'ANTHROPIC_API_KEY is not set on the API. Add it to apps/api/.env and restart the API.',
+      'No AI provider is set up on the API. Set AI_PROVIDER and AI_API_KEY in apps/api/.env and restart the API.',
     );
   }
 
@@ -146,7 +146,9 @@ async function main() {
   const org = (await request('GET', '/orgs')).find((item) => item.name === DEMO_ORG);
   check(org, `Organization "${DEMO_ORG}" not found. Run: node scripts/seed-demo.mjs`);
   const orgPath = `/orgs/${org.id}`;
-  console.log(`API ${health.version} at ${BASE}, organization "${org.name}"`);
+  console.log(
+    `API ${health.version} at ${BASE}, AI ${health.aiProvider}, organization "${org.name}"`,
+  );
 
   await step('RFP extraction', async () => {
     const form = new FormData();
