@@ -10,6 +10,7 @@ function context(overrides: Partial<DraftContext> = {}): DraftContext {
     organizationName: 'Roshni Foundation',
     organizationType: 'NONPROFIT',
     profile: 'Mission: educate girls in rural Sindh',
+    library: [],
     documents: [],
     funderName: 'Test Foundation',
     templateName: 'Education Grant',
@@ -32,6 +33,19 @@ describe('buildDraftUserMessage', () => {
     expect(message).toContain("Funder's instructions: Describe the problem");
     expect(message).toContain('Word limit: 500 words');
     expect(message.trim().endsWith('Output the section text only.')).toBe(true);
+  });
+
+  it('passes the approved library passages with their category', () => {
+    const message = buildDraftUserMessage(
+      context({
+        library: [
+          { title: 'Safeguarding policy', category: 'POLICIES', body: 'Every teacher is vetted.' },
+        ],
+      }),
+    );
+    expect(message).toContain('<content_library>');
+    expect(message).toContain('--- Safeguarding policy (policies) ---');
+    expect(message).toContain('Every teacher is vetted.');
   });
 
   it('leaves out blocks that have nothing in them', () => {

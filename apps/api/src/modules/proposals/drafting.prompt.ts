@@ -1,7 +1,7 @@
 import type { RefineAction } from '@grant/shared';
 
-export const DRAFT_PROMPT_VERSION = 'section-draft-v4';
-export const REFINE_PROMPT_VERSION = 'section-refine-v4';
+export const DRAFT_PROMPT_VERSION = 'section-draft-v5';
+export const REFINE_PROMPT_VERSION = 'section-refine-v5';
 
 export const DRAFT_SYSTEM_PROMPT = `You write grant proposal sections for nonprofits and startups.
 
@@ -9,7 +9,8 @@ Rules:
 - Write only the requested section. No title, no preamble, no commentary.
 - Write paragraphs separated by blank lines. Where the funder asks for a list, or a list is genuinely clearer (activities, outcomes, targets), use lines starting with "- " or "1. ". Use **bold** for at most two or three headline figures in the whole section (for example the amount requested or the number of people reached); never bold ordinary numbers, dates or names. No headings, tables or other markdown.
 - Respect the word limit. If none is given, keep the length proportionate to the funder's instructions.
-- Use only facts given in the organization profile and its documents. Never invent statistics, dates, names, amounts or partnerships.
+- Use only facts given in the organization profile, its content library and its documents. Never invent statistics, dates, names, amounts or partnerships.
+- The content library holds the organization's approved wording. When a passage fits the section, reuse its facts and phrasing, shortened or adapted to the word limit, rather than paraphrasing the same facts differently.
 - When a needed fact is missing, insert a placeholder exactly in this form — [NEEDS INPUT: 2025 number of beneficiaries] — and carry on writing around it.
 - The funder's eligibility rules are requirements, not facts about the organization. Do not state that the organization meets one unless the profile or documents say so. Where the section needs it, write a placeholder that names that exact requirement, e.g. [NEEDS INPUT: confirm <the requirement as the funder wrote it>], in the sentence where the fact belongs. Only mention requirements that appear in the funder's eligibility list.
 - Do not claim that attachments, budgets or other documents have been prepared, uploaded or submitted.
@@ -23,6 +24,8 @@ export interface DraftContext {
   organizationName: string;
   organizationType: string;
   profile: string;
+  /** Approved passages from the content library; organization facts and preferred wording. */
+  library: { title: string; category: string; body: string }[];
   documents: { name: string; excerpt: string }[];
   funderName: string | null;
   templateName: string | null;
@@ -50,6 +53,10 @@ function contextBlocks(context: DraftContext): string {
     )
     .join('\n');
 
+  const library = context.library
+    .map((item) => `--- ${item.title} (${item.category.toLowerCase()}) ---\n${item.body}`)
+    .join('\n\n');
+
   const documents = context.documents
     .map((document) => `--- ${document.name} ---\n${document.excerpt}`)
     .join('\n\n');
@@ -63,6 +70,7 @@ function contextBlocks(context: DraftContext): string {
       'organization',
       `Name: ${context.organizationName}\nType: ${context.organizationType}\n\n${context.profile}`,
     ),
+    block('content_library', library),
     block('organization_documents', documents),
     block(
       'funder',

@@ -68,6 +68,16 @@ enum DeadlineType {
   OTHER
 }
 
+enum LibraryCategory {
+  ORGANIZATION
+  PROGRAMS
+  IMPACT
+  TEAM
+  FINANCE
+  POLICIES
+  OTHER
+}
+
 enum ExportFormat {
   DOCX
   PDF
@@ -108,6 +118,7 @@ model User {
   aiGenerations     AiGeneration[]
   exports           Export[]
   auditLogs         AuditLog[]
+  libraryBlocks     LibraryBlock[]
 
   @@map("users")
 }
@@ -163,6 +174,7 @@ model Organization {
   aiGenerations   AiGeneration[]
   auditLogs       AuditLog[]
   storedFiles     StoredFile[]
+  libraryBlocks   LibraryBlock[]
 
   @@map("organizations")
 }
@@ -493,4 +505,24 @@ model StoredFile {
 
   @@index([organizationId])
   @@map("stored_files")
+}
+
+/// Approved, reusable passages (history, team bios, M&E approach, policies). Writers insert
+/// them into sections, and the AI treats them as organization facts and preferred wording.
+model LibraryBlock {
+  id             String          @id @default(cuid())
+  organizationId String
+  title          String
+  body           String
+  category       LibraryCategory @default(OTHER)
+  usageCount     Int             @default(0)
+  createdById    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, category])
+  @@map("library_blocks")
 }

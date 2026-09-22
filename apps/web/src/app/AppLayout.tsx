@@ -5,6 +5,7 @@ import {
   ChevronRight,
   ChevronsUpDown,
   FileText,
+  BookMarked,
   FolderOpen,
   LayoutDashboard,
   LibraryBig,
@@ -44,6 +45,7 @@ const navGroups: { label?: string; items: NavItem[] }[] = [
     label: 'Library',
     items: [
       { to: '/templates', label: 'Funder templates', icon: LibraryBig },
+      { to: '/library', label: 'Content library', icon: BookMarked },
       { to: '/documents', label: 'Documents', icon: FolderOpen },
     ],
   },
@@ -65,6 +67,7 @@ const sectionTitles: [RegExp, string][] = [
   [/^\/templates\/.+/, 'Template'],
   [/^\/templates/, 'Funder templates'],
   [/^\/documents/, 'Documents'],
+  [/^\/library/, 'Content library'],
   [/^\/profile/, 'Profile'],
   [/^\/team/, 'Team'],
   [/^\/settings/, 'Settings'],

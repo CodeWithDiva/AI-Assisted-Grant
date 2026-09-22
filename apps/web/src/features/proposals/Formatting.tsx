@@ -72,6 +72,7 @@ export function FormattingToolbar({
   preview,
   onPreviewChange,
   onChange,
+  extra,
 }: {
   textareaRef: RefObject<HTMLTextAreaElement | null>;
   text: string;
@@ -79,6 +80,8 @@ export function FormattingToolbar({
   preview: boolean;
   onPreviewChange: (preview: boolean) => void;
   onChange: (text: string) => void;
+  /** More tools, shown before the preview switch (the editor adds the content library). */
+  extra?: React.ReactNode;
 }) {
   const format = (kind: FormatKind) => {
     const area = textareaRef.current;
@@ -119,10 +122,12 @@ export function FormattingToolbar({
       <span className="hidden text-[12px] text-ink-400 md:inline">
         Formatting carries into Word and PDF exports
       </span>
+      <span className="ml-auto" />
+      {extra}
       <button
         type="button"
         onClick={() => onPreviewChange(!preview)}
-        className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-ink-600 hover:bg-paper-dark hover:text-ink-900"
+        className=" inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] text-ink-600 hover:bg-paper-dark hover:text-ink-900"
       >
         {preview ? <PenLine className="size-4" /> : <Eye className="size-4" />}
         {preview ? 'Edit' : 'Preview'}

@@ -7,6 +7,8 @@ import { readSectionText } from './section-text.util';
 /** Keeps prompt size sane: a few documents, trimmed. */
 const MAX_DOCUMENTS = 4;
 const MAX_DOC_CHARS = 12_000;
+/** Library passages are short and approved, so more of them fit: most-used first. */
+const MAX_LIBRARY_CHARS = 16_000;
 
 interface ProfileRow {
   mission: string | null;
@@ -30,7 +32,7 @@ export class ProposalContextService {
     sectionId: string,
     userInstruction?: string,
   ): Promise<DraftContext> {
-    const [organization, profile, documents, proposal] = await Promise.all([
+    const [organization, profile, documents, proposal, library] = await Promise.all([
       this.prisma.organization.findUniqueOrThrow({
         where: { id: organizationId },
         select: { name: true, type: true },
@@ -53,6 +55,12 @@ export class ProposalContextService {
           sections: { orderBy: { order: 'asc' } },
         },
       }),
+      this.prisma.libraryBlock.findMany({
+        where: { organizationId },
+        select: { title: true, category: true, body: true },
+        orderBy: [{ usageCount: 'desc' }, { updatedAt: 'desc' }],
+        take: 60,
+      }),
     ]);
 
     const section = proposal.sections.find((item) => item.id === sectionId);
@@ -62,6 +70,7 @@ export class ProposalContextService {
       organizationName: organization.name,
       organizationType: organization.type,
       profile: this.renderProfile(profile),
+      library: fitWithin(library, MAX_LIBRARY_CHARS),
       documents: documents.map((document) => ({
         name: document.fileName,
         excerpt: (document.extractedText ?? '').slice(0, MAX_DOC_CHARS),
@@ -125,3 +134,15 @@ export class ProposalContextService {
 }
 
 export { countWords, readSectionText } from './section-text.util';
+
+/** Keeps whole passages, in order, until the character budget is used up. */
+export function fitWithin<T extends { body: string }>(items: T[], budget: number): T[] {
+  const kept: T[] = [];
+  let used = 0;
+  for (const item of items) {
+    if (used + item.body.length > budget) break;
+    kept.push(item);
+    used += item.body.length;
+  }
+  return kept;
+}

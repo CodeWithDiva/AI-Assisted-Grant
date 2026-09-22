@@ -29,6 +29,32 @@ async function call(method, path, body) {
 
 const daysFromNow = (days) => new Date(Date.now() + days * 864e5).toISOString();
 
+/** Reusable passages for the content library (added to older demo workspaces too). */
+const LIBRARY = [
+  {
+    title: 'Organization history',
+    category: 'ORGANIZATION',
+    body: 'Roshni Education Trust was founded in 2012 by Ayesha Malik after a flood closed the only girls’ school in her home village in Thatta. It began with one community classroom and 26 students, and now runs 22 classrooms across 14 villages in Thatta and Sujawal.',
+  },
+  {
+    title: 'Monitoring and evaluation approach',
+    category: 'IMPACT',
+    body: 'Attendance is recorded daily by each community teacher and checked monthly by field coordinators. Literacy and numeracy are assessed at the start and end of every school year with the ASER tool, and scholarship recipients are tracked until they complete Grade 10.',
+  },
+  {
+    title: 'Teacher safeguarding',
+    category: 'POLICIES',
+    body: 'Every community teacher completes a 40-hour child protection course, run with the Sindh Child Protection Authority, before taking a class. Refresher training is held every January, and each village has a named safeguarding focal person.',
+  },
+];
+
+async function seedLibrary(orgId) {
+  const existing = await call('GET', `/orgs/${orgId}/library`);
+  if (existing.length) return;
+  for (const passage of LIBRARY) await call('POST', `/orgs/${orgId}/library`, passage);
+  console.log(`Added ${LIBRARY.length} content library passages`);
+}
+
 async function main() {
   try {
     await call('POST', '/auth/register', {
@@ -45,7 +71,8 @@ async function main() {
   const orgs = await call('GET', '/orgs');
   let org = orgs.find((item) => item.name === 'Roshni Education Trust');
   if (org) {
-    console.log('Demo organization already exists — nothing to do.');
+    await seedLibrary(org.id);
+    console.log('Demo organization already exists — nothing else to do.');
     return;
   }
 
@@ -208,6 +235,8 @@ async function main() {
     type: 'REPORT',
     dueAt: daysFromNow(74),
   });
+
+  await seedLibrary(org.id);
 
   console.log(`Demo workspace ready. Sign in with ${EMAIL} / ${PASSWORD}`);
 }

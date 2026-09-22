@@ -97,6 +97,13 @@ export const router = createBrowserRouter([
                         ),
                       },
                       {
+                        path: 'library',
+                        element: page(
+                          () => import('../features/library/LibraryPage'),
+                          'LibraryPage',
+                        ),
+                      },
+                      {
                         path: 'documents',
                         element: page(
                           () => import('../features/documents/DocumentsPage'),

@@ -125,8 +125,18 @@ curl -sf -b "$INVITEE_JAR" -X POST "$BASE/invitations/$INVITE_TOKEN/accept" | gr
   -H 'Content-Type: application/json' -d '{"title":"Nope","type":"OTHER","dueAt":"2030-01-01"}')" = "403" ] \
   || fail "a viewer was allowed to write"
 [ "$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/members" | json .length)" = "2" ] || fail "new member not listed"
-rm -f "$INVITEE_JAR"
 pass "invitee accepts, joins as viewer, and cannot write"
+
+# --- content library ------------------------------------------------------
+BLOCK=$(curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/library" -H 'Content-Type: application/json'   -d '{"title":"Organization history","category":"ORGANIZATION","body":"Founded in 2012 in Thatta."}' | json .id)
+[ -n "$BLOCK" ] || fail "library passage not created"
+curl -sf -b "$JAR" -X PATCH "$BASE/orgs/$ORG/library/$BLOCK" -H 'Content-Type: application/json'   -d '{"body":"Founded in 2012 in Thatta, Sindh."}' | grep -q 'Sindh' || fail "library passage not updated"
+curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/library/$BLOCK/used" > /dev/null || fail "library use not counted"
+[ "$(curl -sf -b "$INVITEE_JAR" "$BASE/orgs/$ORG/library" | json '[0].usageCount')" = "1" ]   || fail "a viewer could not read the library"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/library"   -H 'Content-Type: application/json' -d '{"title":"Nope","body":"x"}')" = "403" ]   || fail "a viewer was allowed to add to the library"
+curl -sf -b "$JAR" -X DELETE "$BASE/orgs/$ORG/library/$BLOCK" > /dev/null || fail "library passage not deleted"
+rm -f "$INVITEE_JAR"
+pass "content library: add, edit, count use, viewer reads only, delete"
 
 # --- account --------------------------------------------------------------
 curl -sf -b "$JAR" -X PATCH "$BASE/auth/me" -H 'Content-Type: application/json' -d '{"name":"Smoke Renamed"}' \

@@ -13,6 +13,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { EmailModule } from './modules/email/email.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { HealthModule } from './modules/health/health.module';
+import { LibraryModule } from './modules/library/library.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { ProposalsModule } from './modules/proposals/proposals.module';
@@ -37,6 +38,7 @@ import { PrismaModule } from './prisma/prisma.module';
     TemplatesModule,
     ProposalsModule,
     DeadlinesModule,
+    LibraryModule,
     ExportsModule,
     AdminModule,
     HealthModule,

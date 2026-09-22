@@ -1,7 +1,7 @@
 import { countWords, ProposalStatus, RefineAction, type ProposalSectionView } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, ClipboardCheck } from 'lucide-react';
+import { BookMarked, ChevronDown, ClipboardCheck } from 'lucide-react';
 import { useParams } from 'react-router';
 import {
   Alert,
@@ -14,6 +14,8 @@ import {
   Select,
   Spinner,
 } from '../../components/ui';
+import { insertPassage, libraryApi } from '../library/api';
+import { LibraryPanel } from '../library/LibraryPanel';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { proposalsApi } from './api';
 import { CompliancePanel } from './CompliancePanel';
@@ -45,6 +47,11 @@ export function ProposalEditorPage() {
   const [preview, setPreview] = useState(false);
   const dirty = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  // The selection when the library opened: what "save to library" stores.
+  const [librarySource, setLibrarySource] = useState<{
+    text: string;
+    isSelection: boolean;
+  } | null>(null);
 
   const proposal = useQuery({
     queryKey: ['proposals', orgId, proposalId],
@@ -347,7 +354,59 @@ export function ProposalEditorPage() {
                 dirty.current = true;
                 setText(value);
               }}
+              extra={
+                <button
+                  type="button"
+                  disabled={busy || preview}
+                  aria-expanded={librarySource !== null}
+                  onMouseDown={(event) => event.preventDefault()}
+                  onClick={() => {
+                    if (librarySource) return setLibrarySource(null);
+                    const area = textareaRef.current;
+                    const picked = area ? text.slice(area.selectionStart, area.selectionEnd) : '';
+                    setLibrarySource(
+                      picked.trim()
+                        ? { text: picked, isSelection: true }
+                        : { text, isSelection: false },
+                    );
+                  }}
+                  className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] disabled:opacity-40 ${
+                    librarySource
+                      ? 'bg-accent-50 text-accent-700'
+                      : 'text-ink-600 hover:bg-paper-dark hover:text-ink-900'
+                  }`}
+                >
+                  <BookMarked className="size-4" />
+                  Library
+                </button>
+              }
             />
+
+            {librarySource && !preview ? (
+              <LibraryPanel
+                orgId={orgId}
+                sectionTitle={selected.title}
+                source={librarySource}
+                onClose={() => setLibrarySource(null)}
+                onInsert={(block) => {
+                  const area = textareaRef.current;
+                  const start = area?.selectionStart ?? text.length;
+                  const end = area?.selectionEnd ?? text.length;
+                  const edit = insertPassage(text, start, end, block.body);
+                  dirty.current = true;
+                  setText(edit.text);
+                  setLibrarySource(null);
+                  // Counts towards "most used", which also orders what the AI sees first.
+                  void libraryApi
+                    .markUsed(orgId, block.id)
+                    .then(() => queryClient.invalidateQueries({ queryKey: ['library', orgId] }));
+                  requestAnimationFrame(() => {
+                    area?.focus();
+                    area?.setSelectionRange(edit.cursor, edit.cursor);
+                  });
+                }}
+              />
+            ) : null}
 
             {preview ? (
               <RichPreview text={text} />
