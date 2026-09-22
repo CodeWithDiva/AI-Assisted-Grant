@@ -13,6 +13,9 @@ const envSchema = z
     WEB_ORIGIN: z.string().default('http://localhost:5173'),
     // Proxies in front of the API (Render = 1; Vercel proxy + Render = 2). Lets rate limits
     // see each visitor's own IP instead of the proxy's.
+    // Sign-in, sign-up and password attempts per visitor per minute. Keep 10 in production;
+    // the browser tests raise it because they sign in many times a minute.
+    AUTH_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(10),
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
 
     DATABASE_URL: z.string().min(1),
@@ -29,6 +32,9 @@ const envSchema = z
       .or(z.literal('').transform(() => undefined)),
     AI_API_KEY: optional,
     AI_MODEL: optional,
+    // Comma-separated models tried when AI_MODEL is overloaded; "none" turns this off.
+    // Gemini and Groq have defaults.
+    AI_FALLBACK_MODEL: optional,
     AI_BASE_URL: optional,
 
     ANTHROPIC_API_KEY: optional,

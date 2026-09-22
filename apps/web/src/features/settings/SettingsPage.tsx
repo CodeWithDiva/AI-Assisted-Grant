@@ -1,6 +1,6 @@
 import { OrganizationType, OrgRole } from '@grant/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Building2, KeyRound, UserRound } from 'lucide-react';
+import { AtSign, Building2, KeyRound, UserRound } from 'lucide-react';
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { Alert, Button, Card, Field, PageTitle, Select, type Tone } from '../../components/ui';
 import { authApi } from '../auth/api';
@@ -18,6 +18,7 @@ export function SettingsPage() {
         description="Your account, and the details of the organization you are working in."
       />
       <AccountSection />
+      <EmailSection />
       <PasswordSection />
       {activeOrg ? <OrganizationSection /> : null}
     </div>
@@ -84,18 +85,68 @@ function AccountSection() {
           value={name}
           onChange={(event) => setName(event.target.value)}
         />
-        <Field
-          label="Email"
-          value={user?.email ?? ''}
-          disabled
-          hint="Email changes are not supported yet."
-        />
         <Button
           type="submit"
           variant="primary"
           disabled={save.isPending || name.trim() === user?.name}
         >
           {save.isPending ? 'Saving…' : 'Save'}
+        </Button>
+      </form>
+    </Section>
+  );
+}
+
+function EmailSection() {
+  const { user, refresh } = useAuth();
+  const [email, setEmail] = useState('');
+  const [currentPassword, setCurrent] = useState('');
+
+  const save = useMutation({
+    mutationFn: () => authApi.changeEmail({ email, currentPassword }),
+    onSuccess: async () => {
+      setEmail('');
+      setCurrent('');
+      await refresh();
+    },
+  });
+
+  const onSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    save.mutate();
+  };
+
+  return (
+    <Section
+      icon={AtSign}
+      title="Email address"
+      description="Used to sign in and for reminders. The old address is told about the change."
+    >
+      <form onSubmit={onSubmit} className="space-y-4">
+        <Notice tone="red">{save.error?.message}</Notice>
+        <Notice tone="green">
+          {save.isSuccess ? `You now sign in with ${user?.email}.` : undefined}
+        </Notice>
+        <Field label="Current email" value={user?.email ?? ''} disabled />
+        <Field
+          label="New email"
+          type="email"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+        />
+        <Field
+          label="Password"
+          type="password"
+          autoComplete="current-password"
+          required
+          hint="Your current password, to confirm it is you."
+          value={currentPassword}
+          onChange={(event) => setCurrent(event.target.value)}
+        />
+        <Button type="submit" variant="primary" disabled={save.isPending}>
+          {save.isPending ? 'Saving…' : 'Change email'}
         </Button>
       </form>
     </Section>

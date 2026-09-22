@@ -21,6 +21,8 @@ A redesign of the interface, a working team feature, and production file storage
 
 **Account and settings**
 - New Settings page: change your name, change your password (signs out every other session), edit the organization's details
+- **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
+- **Change email address** from Settings, confirmed with the current password; the old address is notified
 
 **Writing**
 - Formatting toolbar in the editor: bold, italics, bulleted and numbered lists, with Ctrl+B / Ctrl+I and a preview
@@ -41,6 +43,9 @@ A redesign of the interface, a working team feature, and production file storage
 - Daily reminders can be triggered by a scheduled GitHub workflow (`POST /cron/reminders`), for hosts that sleep when idle
 - The web app can reach the API through a Vercel proxy (`/api`), so sign-in works when the two are on different free domains
 - `render.yaml` now targets Render's free plan; step-by-step guide in `docs/FREE_HOSTING.md`
+- Checked end to end with a real Gemini key: RFP import, drafting, rewriting, review and fit score all pass `scripts/ai-check.mjs`
+- Free-tier resilience: busy models are retried, then fallback models are tried in turn (each has its own daily allowance); a model that has used its daily allowance or is no longer offered is skipped at once
+- A draft whose stream breaks off part-way is written again automatically instead of saving half a section; if it fails, the editor puts back the previous text
 - Rate limits count each visitor separately behind proxies (`TRUST_PROXY_HOPS`)
 
 **Reliability and operations**
@@ -52,6 +57,7 @@ A redesign of the interface, a working team feature, and production file storage
 **Fixes**
 - Normal page loads could hit the sign-in rate limit (`429`) and log people out — the tight limit now applies only to register, login and password change
 - Proposals no longer show a writing-progress bar once they are submitted or decided
+- AI drafts bold only two or three headline figures instead of every number (prompt v3)
 - "Days left" counted hours, so a deadline three days away could show "4 days left" early in the day and a reminder could go out a day early; it now counts calendar days everywhere
 - `pnpm dev` first frees ports 4000 and 5173 left over from a previous run, and the web app no longer silently moves to another port
 - Rebuilding the API while it runs no longer crashes the development server
@@ -75,9 +81,8 @@ Accounts and organizations with roles · organization profile and document uploa
 | 2 | **Formatting is limited** to bold, italics and lists — no headings, tables or images inside a section | Enough for funder forms, which are mostly plain text; tables are Phase 2 |
 | 3 | **The reminder job runs inside the API process** | Fine for one instance; move it to a dedicated worker before scaling out |
 | 4 | **AI features need an AI key** — without one they return 503 | A free Gemini key is enough; everything else, including the code-based review checks, works without one |
-| 7 | **Free hosting sleeps** — the first request after 15 idle minutes takes about a minute; Gemini's free tier may use content to improve Google's products | Fine for demos and pilots; see FREE_HOSTING.md for what to change for production |
 | 5 | **AI output not yet checked against real client RFPs** | Run `scripts/ai-check.mjs` and a UAT round with real funder calls once the API key and RFPs are available |
-| 6 | **Email address cannot be changed** from Settings | Change it in the database for now |
+| 6 | **Free hosting sleeps** — the first request after 15 idle minutes takes about a minute; Gemini's free tier may use content to improve Google's products | Fine for demos and pilots; see FREE_HOSTING.md for what to change for production |
 
 ## Not in these releases (Phase 2)
 

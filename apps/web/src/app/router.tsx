@@ -23,6 +23,14 @@ export const router = createBrowserRouter([
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
       {
+        path: '/forgot-password',
+        element: page(() => import('../features/auth/ForgotPasswordPage'), 'ForgotPasswordPage'),
+      },
+      {
+        path: '/reset-password/:token',
+        element: page(() => import('../features/auth/ResetPasswordPage'), 'ResetPasswordPage'),
+      },
+      {
         path: '/invite/:token',
         element: page(() => import('../features/team/AcceptInvitePage'), 'AcceptInvitePage'),
       },

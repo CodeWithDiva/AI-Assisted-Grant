@@ -30,6 +30,7 @@ export class AiService {
       AI_PROVIDER: config.get('AI_PROVIDER', { infer: true }),
       AI_API_KEY: config.get('AI_API_KEY', { infer: true }),
       AI_MODEL: config.get('AI_MODEL', { infer: true }),
+      AI_FALLBACK_MODEL: config.get('AI_FALLBACK_MODEL', { infer: true }),
       AI_BASE_URL: config.get('AI_BASE_URL', { infer: true }),
       ANTHROPIC_API_KEY: config.get('ANTHROPIC_API_KEY', { infer: true }),
       ANTHROPIC_MODEL: config.get('ANTHROPIC_MODEL', { infer: true }),
@@ -43,7 +44,13 @@ export class AiService {
         settings.provider === 'anthropic'
           ? new AnthropicProvider(settings.apiKey!, settings.model)
           : new OpenAiCompatibleProvider(settings);
-      this.logger.log(`AI provider: ${settings.provider} (${settings.model})`);
+      this.logger.log(
+        `AI provider: ${settings.provider} (${settings.model}${
+          settings.fallbackModels.length
+            ? `, falls back to ${settings.fallbackModels.join(', ')}`
+            : ''
+        })`,
+      );
     }
   }
 
@@ -68,11 +75,12 @@ export class AiService {
   async streamText(
     request: TextRequest,
     onDelta: (delta: string) => void,
+    onRestart?: () => void,
   ): Promise<AiResult<string>> {
     const provider = this.requireProvider();
     const startedAt = Date.now();
     try {
-      const result = await provider.streamText(request, onDelta);
+      const result = await provider.streamText(request, onDelta, onRestart);
       return this.record(provider, request, result.usage, startedAt, result.data);
     } catch (error) {
       await this.recordFailure(provider, request, startedAt, error);

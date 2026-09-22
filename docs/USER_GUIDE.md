@@ -24,6 +24,8 @@ The dot at the bottom of the sidebar shows whether AI drafting is available (**A
 2. Enter your organization's name, type and country.
 3. Consultants writing for several clients can add one organization per client and switch between them from the top of the sidebar.
 
+**Forgot your password?** On the sign-in page choose **Forgot password?** and enter your email. The link in the email works once, for 60 minutes; choosing a new password signs you in and signs you out on every other device.
+
 ## 2. Fill in the profile
 
 **Organization → Profile.** This is the single most important screen: the AI writes proposals from these facts and nothing else.
@@ -102,13 +104,17 @@ The AI never invents statistics, dates or names. When it needs a fact you have n
 ## 10. Settings
 
 - **Account** — change your display name.
+- **Email address** — change the address you sign in with (your current password confirms it). The old address gets a notice, so nobody can take over an account silently.
 - **Password** — changing it signs you out on every other device.
 - **Organization** — owners can change the name, type, country and website.
 
 ## Frequently asked
 
 **Does the AI send my data anywhere else?**
-Your profile, documents and drafts are sent to the Claude API to produce the text you asked for, and nowhere else.
+Your profile, documents and drafts are sent to the AI service your administrator chose (Google Gemini, Groq or Anthropic Claude) to produce the text you asked for, and nowhere else. On Gemini's free plan Google may use that content to improve its products; ask your administrator which plan is in use before working on confidential material.
+
+**An AI button says the service is busy or the daily limit is used up.**
+On the free plan each AI model has a daily allowance, and the app already switches to a second model when the first is busy. Try again in a few minutes, or the next day. Everything else keeps working in the meantime.
 
 **Why did a draft come back short?**
 The AI stays inside the funder's word limit and only uses facts it was given. A thin profile produces a short draft with placeholders.

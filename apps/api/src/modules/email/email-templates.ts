@@ -157,6 +157,59 @@ export function deadlineReminderEmail(input: {
   return { subject, text, html };
 }
 
+export function passwordResetEmail(input: {
+  name: string;
+  link: string;
+  expiresInMinutes: number;
+}): RenderedEmail {
+  const subject = 'Reset your GrantPilot password';
+
+  const html = layout({
+    preheader: 'A link to choose a new password',
+    body: `${eyebrow('Password reset')}
+      ${title('Choose a new password')}
+      <p style="margin:0 0 22px;color:${COLORS.muted};">Hello ${escapeHtml(input.name)}, someone (hopefully you) asked to reset the password for your GrantPilot account.</p>
+      ${button('Choose a new password', input.link)}
+      <p style="margin:22px 0 0;font-size:13px;color:${COLORS.faint};">The link works once and expires in ${input.expiresInMinutes} minutes. Choosing a new password signs you out on every device. If the button does not work, paste this address into your browser:<br><span style="color:${COLORS.muted};word-break:break-all;">${escapeHtml(input.link)}</span></p>`,
+    footer: 'If you did not ask for this, ignore this email — your password stays the same.',
+  });
+
+  const text = [
+    `Hello ${input.name},`,
+    '',
+    'Someone (hopefully you) asked to reset the password for your GrantPilot account.',
+    `Choose a new password: ${input.link}`,
+    '',
+    `The link works once and expires in ${input.expiresInMinutes} minutes.`,
+    'If you did not ask for this, ignore this email — your password stays the same.',
+  ].join('\n');
+
+  return { subject, text, html };
+}
+
+/** Sent to the old address, so a hijacked account does not change hands silently. */
+export function emailChangedEmail(input: { name: string; newEmail: string }): RenderedEmail {
+  const subject = 'Your GrantPilot email address was changed';
+
+  const html = layout({
+    preheader: `Your account now uses ${input.newEmail}`,
+    body: `${eyebrow('Account')}
+      ${title('Email address changed')}
+      <p style="margin:0;color:${COLORS.muted};">Hello ${escapeHtml(input.name)}, your GrantPilot account now signs in with <strong style="color:${COLORS.ink};">${escapeHtml(input.newEmail)}</strong>. This address will no longer receive its emails.</p>`,
+    footer:
+      'If you did not make this change, reply to this email or contact your administrator straight away.',
+  });
+
+  const text = [
+    `Hello ${input.name},`,
+    '',
+    `Your GrantPilot account now signs in with ${input.newEmail}. This address will no longer receive its emails.`,
+    'If you did not make this change, contact your administrator straight away.',
+  ].join('\n');
+
+  return { subject, text, html };
+}
+
 export function invitationEmail(input: {
   organizationName: string;
   inviterName: string;

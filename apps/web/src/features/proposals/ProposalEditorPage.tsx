@@ -95,14 +95,22 @@ export function ProposalEditorPage() {
   const generate = useMutation({
     mutationFn: async () => {
       setStreaming(true);
+      const before = text;
       setText('');
-      return proposalsApi.generateSection(
-        orgId,
-        proposalId,
-        selected!.id,
-        instruction.trim() || undefined,
-        (delta) => setText((current) => current + delta),
-      );
+      try {
+        return await proposalsApi.generateSection(
+          orgId,
+          proposalId,
+          selected!.id,
+          instruction.trim() || undefined,
+          (delta) => setText((current) => current + delta),
+          () => setText(''),
+        );
+      } catch (error) {
+        // Nothing was saved, so put back what was there instead of a half-written draft.
+        setText(before);
+        throw error;
+      }
     },
     onSuccess: (section) => {
       setText(section.text);
@@ -124,6 +132,7 @@ export function ProposalEditorPage() {
           selected!.id,
           { action, instruction: instruction.trim() || undefined },
           (delta) => setText((current) => current + delta),
+          () => setText(''),
         );
       } catch (error) {
         setText(before);

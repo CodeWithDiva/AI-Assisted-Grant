@@ -4,7 +4,7 @@ Run GrantPilot for a demo or pilot with **no paid services and no credit card**.
 
 | Piece | Free service | Free allowance (check the current terms) |
 |-------|--------------|------------------------------------------|
-| AI | **Google Gemini API** (Google AI Studio) | Daily request limit per model; see AI Studio → Rate limits |
+| AI | **Google Gemini API** (Google AI Studio) | A daily request allowance per model (for example 20 a day for `gemini-3.8-flash`); the app uses `gemini-3.6-flash` and falls back to three other free models, so the allowances add up |
 | Database and files | **Neon** PostgreSQL | 0.5 GB storage; uploaded and exported files are kept in the database |
 | API | **Render** free web service | Sleeps after 15 minutes idle; the first request after that takes about a minute |
 | Web app | **Vercel** Hobby | Static site; also proxies `/api` to Render so sign-in cookies work |
@@ -16,7 +16,8 @@ Run GrantPilot for a demo or pilot with **no paid services and no credit card**.
 
 - **The API sleeps when idle.** The first visit after a quiet spell shows a loading state for up to a minute. Everything after that is normal speed.
 - **Gemini's free tier may use prompts and answers to improve Google's products.** Fine for a demo with sample data; for real client proposals switch to Groq (free, its terms say inputs are not used for training), a paid Gemini tier or Anthropic, by changing two environment variables.
-- **Free AI limits are per day.** When they run out, AI buttons answer *"the free daily limit is used up"* until the next day; writing, review checks, exports and everything else keep working.
+- **Free AI limits are per day, per model.** The app starts with `gemini-3.6-flash` and, when a model is busy or its allowance is used up, moves on to `gemini-3.8-flash`, `gemini-3.5-flash` and `gemini-3.5-flash-lite`. When all of them are used up, AI buttons answer *"the free daily limit is used up"* until the next day; writing, review checks, exports and everything else keep working. See the current allowances in AI Studio → Rate limits.
+- **Free models are sometimes overloaded.** A busy answer is retried automatically, and a draft that breaks off part-way is written again, so users rarely notice; very occasionally an AI button asks them to try again.
 - **Storage is 0.5 GB** including uploaded files. Plenty for a pilot; set `MAX_UPLOAD_MB` low (10 is the default here) and move to S3 when it fills up.
 - **Vercel's Hobby plan is for non-commercial use.** Use it for the demo and pilot; for commercial production, move the web app to Vercel Pro or to Cloudflare Pages (free, commercial use allowed; same static build).
 

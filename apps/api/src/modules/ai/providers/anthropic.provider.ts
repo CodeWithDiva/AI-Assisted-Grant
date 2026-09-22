@@ -19,6 +19,8 @@ export class AnthropicProvider implements AiProvider {
   async streamText(
     request: TextRequest,
     onDelta: (delta: string) => void,
+    // The SDK's stream does not break off part-way, so there is nothing to restart.
+    _onRestart?: () => void,
   ): Promise<ProviderResult<string>> {
     try {
       const stream = this.client.messages.stream({

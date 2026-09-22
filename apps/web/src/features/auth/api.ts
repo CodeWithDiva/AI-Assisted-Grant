@@ -1,9 +1,12 @@
 import type {
   AuthUser,
+  ChangeEmailInput,
   ChangePasswordInput,
+  ForgotPasswordInput,
   HealthResponse,
   LoginInput,
   RegisterInput,
+  ResetPasswordInput,
   UpdateAccountInput,
 } from '@grant/shared';
 import { apiFetch } from '../../lib/api';
@@ -19,6 +22,12 @@ export const authApi = {
     apiFetch<AuthUser>('/auth/me', { method: 'PATCH', body: JSON.stringify(body) }),
   changePassword: (body: ChangePasswordInput) =>
     apiFetch<void>('/auth/password', { method: 'POST', body: JSON.stringify(body) }),
+  changeEmail: (body: ChangeEmailInput) =>
+    apiFetch<AuthUser>('/auth/email', { method: 'POST', body: JSON.stringify(body) }),
+  forgotPassword: (body: ForgotPasswordInput) =>
+    apiFetch<void>('/auth/forgot-password', { method: 'POST', body: JSON.stringify(body) }),
+  resetPassword: (body: ResetPasswordInput) =>
+    apiFetch<AuthUser>('/auth/reset-password', { method: 'POST', body: JSON.stringify(body) }),
   health: () => apiFetch<HealthResponse>('/health'),
 };
 

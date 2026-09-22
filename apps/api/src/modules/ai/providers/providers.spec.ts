@@ -1,11 +1,15 @@
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import type { Env } from '../../../config/env';
 import type { JsonRequest } from '../ai.types';
 import { AiProviderError, resolveProviderSettings } from './ai-provider';
 import { conformToSchema, extractJson } from './json-schema.util';
-import { OpenAiCompatibleProvider, toChatMessages } from './openai-compatible.provider';
+import {
+  OpenAiCompatibleProvider,
+  retryDelays,
+  toChatMessages,
+} from './openai-compatible.provider';
 
 const env = (values: Partial<Env>) => ({ ANTHROPIC_MODEL: 'claude-opus-5', ...values }) as Env;
 
@@ -25,9 +29,20 @@ describe('resolveProviderSettings', () => {
     expect(resolveProviderSettings(env({ AI_PROVIDER: 'gemini', AI_API_KEY: 'k' }))).toEqual({
       provider: 'gemini',
       apiKey: 'k',
-      model: 'gemini-3.8-flash',
+      model: 'gemini-3.6-flash',
+      fallbackModels: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'],
       baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
     });
+    expect(
+      resolveProviderSettings(
+        env({ AI_PROVIDER: 'gemini', AI_API_KEY: 'k', AI_FALLBACK_MODEL: 'none' }),
+      )?.fallbackModels,
+    ).toEqual([]);
+    expect(
+      resolveProviderSettings(
+        env({ AI_PROVIDER: 'gemini', AI_API_KEY: 'k', AI_FALLBACK_MODEL: 'a, b' }),
+      )?.fallbackModels,
+    ).toEqual(['a', 'b']);
     expect(
       resolveProviderSettings(env({ AI_PROVIDER: 'groq', AI_API_KEY: 'k', AI_MODEL: 'x' })),
     ).toMatchObject({ baseUrl: 'https://api.groq.com/openai/v1', model: 'x' });
@@ -103,6 +118,16 @@ describe('OpenAiCompatibleProvider against a fake server', () => {
   const requests: Record<string, unknown>[] = [];
   let nextJsonReplies: string[] = [];
   let status = 200;
+  /** Models that answer 503 "high demand", as Gemini's free tier often does. */
+  let busyModels = new Set<string>();
+  /** Models the account may not use (404). */
+  let missingModels = new Set<string>();
+  /** Models whose free daily allowance is used up (429 with a per-day quota). */
+  let exhaustedModels = new Set<string>();
+  /** Makes the stream end without a finish reason, like a dropped connection. */
+  let cutStream = false;
+  let cutTimes = Infinity;
+  let busyTimes = Infinity;
 
   beforeAll(async () => {
     server = createServer((req, res) => {
@@ -115,11 +140,27 @@ describe('OpenAiCompatibleProvider against a fake server', () => {
           res.writeHead(status).end('{"error":{"message":"quota"}}');
           return;
         }
+        if (exhaustedModels.has(parsed.model)) {
+          res.writeHead(429).end('{"error":{"details":[{"quotaId":"RequestsPerDay-FreeTier"}]}}');
+          return;
+        }
+        if (missingModels.has(parsed.model)) {
+          res.writeHead(404).end('{"error":{"message":"no longer available"}}');
+          return;
+        }
+        if (busyModels.has(parsed.model) && busyTimes-- > 0) {
+          res.writeHead(503).end('{"error":{"message":"high demand"}}');
+          return;
+        }
         if (parsed.stream) {
           res.writeHead(200, { 'Content-Type': 'text/event-stream' });
           for (const piece of ['We request ', '50,000 USD.']) {
             res.write(`data: ${JSON.stringify({ choices: [{ delta: { content: piece } }] })}\n\n`);
           }
+          if (cutStream && cutTimes-- > 0) return res.end();
+          res.write(
+            `data: ${JSON.stringify({ choices: [{ delta: {}, finish_reason: 'stop' }] })}\n\n`,
+          );
           res.write(
             `data: ${JSON.stringify({ choices: [], usage: { prompt_tokens: 12, completion_tokens: 5 } })}\n\n`,
           );
@@ -142,8 +183,25 @@ describe('OpenAiCompatibleProvider against a fake server', () => {
 
   afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
 
+  beforeEach(() => {
+    status = 200;
+    busyModels = new Set();
+    missingModels = new Set();
+    exhaustedModels = new Set();
+    cutStream = false;
+    cutTimes = Infinity;
+    busyTimes = Infinity;
+    retryDelays.ms = [0, 0];
+  });
+
   const provider = () =>
-    new OpenAiCompatibleProvider({ provider: 'gemini', apiKey: 'test-key', model: 'm', baseUrl });
+    new OpenAiCompatibleProvider({
+      provider: 'gemini',
+      apiKey: 'test-key',
+      model: 'm',
+      fallbackModels: ['retired', 'backup'],
+      baseUrl,
+    });
 
   const jsonRequest: JsonRequest = {
     organizationId: 'o',
@@ -188,6 +246,87 @@ describe('OpenAiCompatibleProvider against a fake server', () => {
     expect(result.data).toEqual({ score: 82, reasons: ['Strong fit'] });
     expect(result.usage).toEqual({ inputTokens: 200, outputTokens: 40 });
     expect(requests.at(-1)).toMatchObject({ response_format: { type: 'json_object' } });
+  });
+
+  it('tries a busy model again before giving up on it', async () => {
+    busyModels = new Set(['m']);
+    busyTimes = 2;
+    nextJsonReplies = ['{"score": 70, "reasons": []}'];
+    const before = requests.length;
+    await expect(provider().generateJson(jsonRequest)).resolves.toMatchObject({
+      data: { score: 70 },
+    });
+    expect(requests.slice(before).map((r) => r.model)).toEqual(['m', 'm', 'm']);
+  });
+
+  it('works down the fallback models while each stays busy', async () => {
+    busyModels = new Set(['m', 'retired']);
+    const before = requests.length;
+    const deltas: string[] = [];
+    await provider().streamText(jsonRequest, (delta) => deltas.push(delta));
+    expect(deltas.join('')).toBe('We request 50,000 USD.');
+    expect(requests.slice(before).map((r) => r.model)).toEqual([
+      'm',
+      'm',
+      'm',
+      'retired',
+      'retired',
+      'retired',
+      'backup',
+    ]);
+  });
+
+  it('skips a fallback model the account cannot use', async () => {
+    busyModels = new Set(['m']);
+    missingModels = new Set(['retired']);
+    const before = requests.length;
+    await provider().streamText(jsonRequest, () => undefined);
+    expect(requests.slice(before).map((r) => r.model)).toEqual([
+      'm',
+      'm',
+      'm',
+      'retired',
+      'backup',
+    ]);
+  });
+
+  it('moves straight on when a model has used its daily allowance', async () => {
+    exhaustedModels = new Set(['m']);
+    const before = requests.length;
+    await provider().streamText(jsonRequest, () => undefined);
+    expect(requests.slice(before).map((r) => r.model)).toEqual(['m', 'retired']);
+  });
+
+  it('writes a dropped stream again once, telling the caller to clear its text', async () => {
+    cutStream = true;
+    cutTimes = 1;
+    const deltas: string[] = [];
+    let restarts = 0;
+    const result = await provider().streamText(
+      jsonRequest,
+      (delta) => deltas.push(delta),
+      () => {
+        restarts++;
+        deltas.length = 0;
+      },
+    );
+    expect(restarts).toBe(1);
+    expect(deltas.join('')).toBe('We request 50,000 USD.');
+    expect(result.data).toBe('We request 50,000 USD.');
+  });
+
+  it('gives up when the stream breaks off twice', async () => {
+    cutStream = true;
+    await expect(provider().streamText(jsonRequest, () => undefined)).rejects.toMatchObject({
+      kind: 'bad_output',
+    });
+  });
+
+  it('reports "busy" when every model is busy', async () => {
+    busyModels = new Set(['m', 'retired', 'backup']);
+    await expect(provider().generateJson(jsonRequest)).rejects.toMatchObject({
+      kind: 'rate_limited',
+    });
   });
 
   it('turns a 429 into a rate-limit error', async () => {

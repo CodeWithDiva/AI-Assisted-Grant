@@ -1,8 +1,15 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  Logger,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import type {
   AuthUser,
+  ChangeEmailInput,
   ChangePasswordInput,
   LoginInput,
   RegisterInput,
@@ -13,6 +20,8 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { CookieOptions, Response } from 'express';
 import type { Env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
+import { emailChangedEmail, passwordResetEmail } from '../email/email-templates';
+import { EmailService } from '../email/email.service';
 import {
   ACCESS_COOKIE_MAX_AGE,
   ACCESS_TOKEN_COOKIE,
@@ -24,13 +33,19 @@ import {
 } from './auth.constants';
 
 const BCRYPT_ROUNDS = 12;
+const RESET_TOKEN_MINUTES = 60;
+/** At most one reset email per account per minute, so the form cannot be used to spam. */
+const RESET_RESEND_SECONDS = 60;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
+    private readonly email: EmailService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthUser> {
@@ -85,6 +100,104 @@ export class AuthService {
         data: { revokedAt: new Date() },
       }),
     ]);
+  }
+
+  /** Requires the current password; the old address is told about the change. */
+  async changeEmail(userId: string, input: ChangeEmailInput): Promise<AuthUser> {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    if (!user.passwordHash || !(await bcrypt.compare(input.currentPassword, user.passwordHash))) {
+      throw new UnauthorizedException('The current password is not correct');
+    }
+
+    const email = input.email.toLowerCase();
+    if (email === user.email) return { id: user.id, email: user.email, name: user.name };
+
+    const taken = await this.prisma.user.findUnique({ where: { email }, select: { id: true } });
+    if (taken) throw new ConflictException('Another account already uses this email');
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data: { email, emailVerifiedAt: null },
+      select: { id: true, email: true, name: true },
+    });
+    await this.email.send({
+      to: [user.email],
+      ...emailChangedEmail({ name: user.name, newEmail: email }),
+    });
+    return updated;
+  }
+
+  /**
+   * Emails a one-time link. Answers the same way whether or not the account exists, so the
+   * form cannot be used to find out who has an account.
+   */
+  async requestPasswordReset(rawEmail: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { email: rawEmail.toLowerCase() },
+      select: { id: true, name: true, email: true },
+    });
+    if (!user) return;
+
+    const recent = await this.prisma.passwordResetToken.findFirst({
+      where: {
+        userId: user.id,
+        createdAt: { gt: new Date(Date.now() - RESET_RESEND_SECONDS * 1000) },
+      },
+      select: { id: true },
+    });
+    if (recent) return;
+
+    const token = randomBytes(32).toString('base64url');
+    await this.prisma.$transaction([
+      // Only the newest link works.
+      this.prisma.passwordResetToken.deleteMany({ where: { userId: user.id } }),
+      this.prisma.passwordResetToken.create({
+        data: {
+          userId: user.id,
+          tokenHash: this.hashToken(token),
+          expiresAt: new Date(Date.now() + RESET_TOKEN_MINUTES * 60 * 1000),
+        },
+      }),
+    ]);
+
+    const link = `${this.config.get('WEB_ORIGIN', { infer: true })}/reset-password/${token}`;
+    const sent = await this.email.send({
+      to: [user.email],
+      ...passwordResetEmail({ name: user.name, link, expiresInMinutes: RESET_TOKEN_MINUTES }),
+    });
+    if (!sent) this.logger.warn(`Password reset email to user ${user.id} could not be sent`);
+  }
+
+  /** Sets the new password, ends every session, and returns the user to sign in. */
+  async resetPassword(token: string, password: string): Promise<AuthUser> {
+    const stored = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash: this.hashToken(token) },
+      include: { user: { select: { id: true, email: true, name: true, emailVerifiedAt: true } } },
+    });
+    if (!stored || stored.usedAt || stored.expiresAt < new Date()) {
+      throw new BadRequestException(
+        'This reset link is invalid or has expired. Ask for a new one.',
+      );
+    }
+
+    const now = new Date();
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: stored.userId },
+        data: {
+          passwordHash: await bcrypt.hash(password, BCRYPT_ROUNDS),
+          // Opening the emailed link proves the address belongs to them.
+          emailVerifiedAt: stored.user.emailVerifiedAt ?? now,
+        },
+      }),
+      this.prisma.passwordResetToken.update({ where: { id: stored.id }, data: { usedAt: now } }),
+      this.prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: now },
+      }),
+    ]);
+
+    return { id: stored.user.id, email: stored.user.email, name: stored.user.name };
   }
 
   async issueTokens(user: AuthUser, res: Response): Promise<void> {

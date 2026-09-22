@@ -54,14 +54,24 @@ export function LoginPage() {
           value={email}
           onChange={(event) => setEmail(event.target.value)}
         />
-        <Field
-          label="Password"
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(event) => setPassword(event.target.value)}
-        />
+        <div>
+          <Field
+            label="Password"
+            type="password"
+            autoComplete="current-password"
+            required
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
+          <div className="mt-1.5 text-right">
+            <Link
+              to="/forgot-password"
+              className="text-[13px] font-medium text-accent-600 hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
+        </div>
         <Button type="submit" variant="primary" disabled={login.isPending} className="h-10 w-full">
           {login.isPending ? 'Signing in…' : 'Sign in'}
         </Button>

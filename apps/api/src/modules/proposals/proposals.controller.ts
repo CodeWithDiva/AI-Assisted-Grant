@@ -110,6 +110,8 @@ export class ProposalsController {
         sectionId,
         body.instruction,
         (delta) => send('delta', { text: delta }),
+        // The AI is writing it again after a dropped stream: the browser clears its text.
+        () => send('restart', {}),
       );
       send('done', section);
     } catch (error) {
@@ -138,6 +140,8 @@ export class ProposalsController {
         sectionId,
         body,
         (delta) => send('delta', { text: delta }),
+        // The AI is writing it again after a dropped stream: the browser clears its text.
+        () => send('restart', {}),
       );
       send('done', section);
     } catch (error) {

@@ -20,6 +20,9 @@ Base URL: `http://localhost:4000/api/v1` (development).
 | GET | `/auth/me` | Current user. |
 | PATCH | `/auth/me` | `{ name }` — rename the signed-in user. |
 | POST | `/auth/password` | `{ currentPassword, newPassword }`. Revokes every session, then issues new cookies for this one. `204`. |
+| POST | `/auth/email` | `{ email, currentPassword }`. Changes the sign-in address, emails a notice to the old one, issues new cookies. `409` if the address is taken. |
+| POST | `/auth/forgot-password` | **public** — `{ email }`. Emails a one-time link (`/reset-password/:token`, valid 60 minutes). Always `204`, so it cannot reveal which addresses have accounts; at most one email a minute per account. |
+| POST | `/auth/reset-password` | **public** — `{ token, password }`. Sets the password, revokes every session and signs the user in. `400` for a used or expired link. |
 
 ## Organizations
 

@@ -196,6 +196,7 @@ export class ProposalsService {
     sectionId: string,
     instruction: string | undefined,
     onDelta: (delta: string) => void,
+    onRestart?: () => void,
   ) {
     await this.requireSection(organizationId, proposalId, sectionId);
     const context = await this.context.build(organizationId, proposalId, sectionId, instruction);
@@ -211,6 +212,7 @@ export class ProposalsService {
         maxTokens: this.maxTokensFor(context.wordLimit),
       },
       onDelta,
+      onRestart,
     );
 
     return this.storeGenerated(proposalId, sectionId, result.data, result.generationId);
@@ -224,6 +226,7 @@ export class ProposalsService {
     sectionId: string,
     input: RefineSectionInput,
     onDelta: (delta: string) => void,
+    onRestart?: () => void,
   ) {
     const section = await this.requireSection(organizationId, proposalId, sectionId);
     const currentText = readSectionText(section.content);
@@ -251,6 +254,7 @@ export class ProposalsService {
         maxTokens: this.maxTokensFor(context.wordLimit),
       },
       onDelta,
+      onRestart,
     );
 
     return this.storeGenerated(proposalId, sectionId, result.data, result.generationId);

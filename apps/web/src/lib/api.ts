@@ -41,12 +41,14 @@ const EVENT_SEPARATOR = '\n\n';
 
 /**
  * Reads a server-sent-event stream (AI drafting). `onDelta` fires for each chunk of text;
- * the promise resolves with the payload of the final `done` event.
+ * `onRestart` when the server starts the text again after a dropped AI stream. The promise
+ * resolves with the payload of the final `done` event.
  */
 export async function apiStream<T>(
   path: string,
   body: unknown,
   onDelta: (text: string) => void,
+  onRestart?: () => void,
 ): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     method: 'POST',
@@ -81,6 +83,7 @@ export async function apiStream<T>(
 
       const payload = JSON.parse(data);
       if (event === 'delta') onDelta(payload.text as string);
+      else if (event === 'restart') onRestart?.();
       else if (event === 'done') result = payload as T;
       else if (event === 'error') throw new ApiError(500, payload.message as string);
     }

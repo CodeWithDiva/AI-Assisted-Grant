@@ -2,6 +2,8 @@ import { expect, test } from '@playwright/test';
 import { createTemplate, createWorkspace, signIn } from './helpers';
 
 test('write a proposal with formatting, review it and export a PDF', async ({ page }) => {
+  // With an AI key set, the review also asks the AI, which can take most of a minute.
+  test.setTimeout(180_000);
   const workspace = await createWorkspace('proposal');
   await createTemplate(workspace, 'E2E Education Grant');
   await signIn(page, workspace.email);
@@ -38,7 +40,9 @@ test('write a proposal with formatting, review it and export a PDF', async ({ pa
 
   await page.getByRole('button', { name: 'Review draft' }).click();
   await page.getByRole('button', { name: 'Check the draft' }).click();
-  await expect(page.getByText('1 unfilled placeholder still in the text.')).toBeVisible();
+  await expect(page.getByText('1 unfilled placeholder still in the text.')).toBeVisible({
+    timeout: 120_000,
+  });
   await expect(page.getByText('This section is empty.')).toBeVisible();
 
   const download = page.waitForEvent('download');

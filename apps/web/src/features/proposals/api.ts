@@ -45,11 +45,13 @@ export const proposalsApi = {
     sectionId: string,
     instruction: string | undefined,
     onDelta: (text: string) => void,
+    onRestart?: () => void,
   ) =>
     apiStream<ProposalSectionView>(
       `/orgs/${orgId}/proposals/${proposalId}/sections/${sectionId}/generate`,
       { instruction },
       onDelta,
+      onRestart,
     ),
 
   refineSection: (
@@ -58,11 +60,13 @@ export const proposalsApi = {
     sectionId: string,
     body: RefineSectionInput,
     onDelta: (text: string) => void,
+    onRestart?: () => void,
   ) =>
     apiStream<ProposalSectionView>(
       `/orgs/${orgId}/proposals/${proposalId}/sections/${sectionId}/refine`,
       body,
       onDelta,
+      onRestart,
     ),
 
   compliance: (orgId: string, proposalId: string) =>

@@ -1,13 +1,19 @@
 import { Body, Controller, Get, HttpCode, Patch, Post, Req, Res } from '@nestjs/common';
 import {
+  changeEmailSchema,
   changePasswordSchema,
+  forgotPasswordSchema,
   loginSchema,
   registerSchema,
+  resetPasswordSchema,
   updateAccountSchema,
   type AuthUser,
+  type ChangeEmailInput,
   type ChangePasswordInput,
+  type ForgotPasswordInput,
   type LoginInput,
   type RegisterInput,
+  type ResetPasswordInput,
   type UpdateAccountInput,
 } from '@grant/shared';
 import { Throttle } from '@nestjs/throttler';
@@ -22,7 +28,10 @@ import { AuthService } from './auth.service';
  * Only the endpoints that accept a password are worth brute-forcing, so only they get the
  * tight limit. `/auth/me` and `/auth/refresh` run on every page load and must not share it.
  */
-const CREDENTIAL_LIMIT = { default: { ttl: 60_000, limit: 10 } };
+const CREDENTIAL_LIMIT = {
+  // Read per request (after .env is loaded); raised only for automated test runs.
+  default: { ttl: 60_000, limit: () => Number(process.env.AUTH_RATE_LIMIT_PER_MINUTE) || 10 },
+};
 
 @Controller('auth')
 export class AuthController {
@@ -91,5 +100,42 @@ export class AuthController {
   ): Promise<void> {
     await this.auth.changePassword(user.id, body);
     await this.auth.issueTokens(user, res);
+  }
+
+  /** New tokens carry the new address. */
+  @Throttle(CREDENTIAL_LIMIT)
+  @Post('email')
+  async changeEmail(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(changeEmailSchema)) body: ChangeEmailInput,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthUser> {
+    const updated = await this.auth.changeEmail(user.id, body);
+    await this.auth.issueTokens(updated, res);
+    return updated;
+  }
+
+  /** Always 204, whether or not the account exists. */
+  @Throttle(CREDENTIAL_LIMIT)
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(204)
+  async forgotPassword(
+    @Body(new ZodValidationPipe(forgotPasswordSchema)) body: ForgotPasswordInput,
+  ): Promise<void> {
+    await this.auth.requestPasswordReset(body.email);
+  }
+
+  /** Sets the new password and signs the user in. */
+  @Throttle(CREDENTIAL_LIMIT)
+  @Public()
+  @Post('reset-password')
+  async resetPassword(
+    @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<AuthUser> {
+    const user = await this.auth.resetPassword(body.token, body.password);
+    await this.auth.issueTokens(user, res);
+    return user;
   }
 }

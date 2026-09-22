@@ -10,6 +10,9 @@ import { conformToSchema, extractJson, type JsonSchema } from './json-schema.uti
 
 const DEFAULT_MAX_TOKENS = 8000;
 const TIMEOUT_MS = 180_000;
+/** Waits before the 2nd and 3rd try of a busy model. Tests set it to zero. */
+export const retryDelays = { ms: [1500, 4000] };
+const RETRYABLE_STATUS = new Set([429, 500, 502, 503, 504]);
 
 interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -37,6 +40,28 @@ export class OpenAiCompatibleProvider implements AiProvider {
   async streamText(
     request: TextRequest,
     onDelta: (delta: string) => void,
+    onRestart?: () => void,
+  ): Promise<ProviderResult<string>> {
+    // Free tiers sometimes drop a stream part-way; write it again once before giving up.
+    for (let attempt = 1; ; attempt++) {
+      let sentText = false;
+      try {
+        return await this.streamOnce(request, (delta) => {
+          sentText = true;
+          onDelta(delta);
+        });
+      } catch (error) {
+        const brokenOff =
+          error instanceof AiProviderError && (error.kind === 'bad_output' || error.midStream);
+        if (!brokenOff || attempt >= 2) throw error;
+        if (sentText) onRestart?.();
+      }
+    }
+  }
+
+  private async streamOnce(
+    request: TextRequest,
+    onDelta: (delta: string) => void,
   ): Promise<ProviderResult<string>> {
     const response = await this.post({
       messages: toChatMessages(request),
@@ -48,16 +73,34 @@ export class OpenAiCompatibleProvider implements AiProvider {
 
     let text = '';
     let usage: ChatUsage | undefined;
+    let finishReason: string | undefined;
     for await (const chunk of readEvents(response)) {
-      const delta = chunk.choices?.[0]?.delta?.content;
+      if (chunk.error) {
+        const error = new AiProviderError(
+          `The AI stopped part-way: ${chunk.error.message ?? 'unknown error'}`,
+          'provider',
+        );
+        error.midStream = true;
+        throw error;
+      }
+      const choice = chunk.choices?.[0];
+      const delta = choice?.delta?.content;
       if (delta) {
         text += delta;
         onDelta(delta);
       }
+      finishReason = choice?.finish_reason ?? finishReason;
       usage = chunk.usage ?? chunk.x_groq?.usage ?? usage;
     }
 
     if (!text.trim()) throw new AiProviderError('The AI returned an empty answer', 'bad_output');
+    // A stream that ends without "stop" was cut off; saving it would store half a section.
+    if (finishReason !== 'stop') {
+      throw new AiProviderError(
+        `The AI stopped before finishing (${finishReason ?? 'connection ended'})`,
+        'bad_output',
+      );
+    }
     return { data: text.trim(), usage: toUsage(usage) };
   }
 
@@ -115,7 +158,35 @@ export class OpenAiCompatibleProvider implements AiProvider {
       : requested;
   }
 
+  /**
+   * Free tiers are often briefly overloaded (503) or rate-limited (429). A busy model is
+   * tried three times with a pause, then each fallback model the same way; a model the
+   * account cannot use (404) is skipped. Nothing has been streamed to the user before a
+   * request succeeds, so retrying is safe.
+   */
   private async post(body: Record<string, unknown>): Promise<Response> {
+    const models = [this.model, ...this.settings.fallbackModels];
+    let lastError: unknown;
+
+    for (const model of models) {
+      for (let attempt = 0; attempt <= retryDelays.ms.length; attempt++) {
+        if (attempt > 0) await sleep(retryDelays.ms[attempt - 1]);
+        try {
+          return await this.send(model, body);
+        } catch (error) {
+          if (!(error instanceof AiProviderError)) throw error;
+          // Keep the more useful "busy" error rather than a later "model not found".
+          if (!lastError || error.kind !== 'model_unavailable') lastError = error;
+          // Waiting does not help a retired model or a used-up daily allowance.
+          if (error.kind === 'model_unavailable' || error.dailyLimit) break;
+          if (!error.retryable) throw error;
+        }
+      }
+    }
+    throw lastError;
+  }
+
+  private async send(model: string, body: Record<string, unknown>): Promise<Response> {
     let response: Response;
     try {
       response = await fetch(`${this.settings.baseUrl}/chat/completions`, {
@@ -124,24 +195,35 @@ export class OpenAiCompatibleProvider implements AiProvider {
           'Content-Type': 'application/json',
           ...(this.settings.apiKey ? { Authorization: `Bearer ${this.settings.apiKey}` } : {}),
         },
-        body: JSON.stringify({ model: this.model, ...body }),
+        body: JSON.stringify({ model, ...body }),
         signal: AbortSignal.timeout(TIMEOUT_MS),
       });
     } catch (error) {
+      // A timeout is not retried: the user has already waited three minutes.
+      const timedOut = (error as Error).name === 'TimeoutError';
       throw new AiProviderError(
         `Could not reach the AI service: ${(error as Error).message}`,
         'provider',
+        !timedOut,
       );
     }
 
     if (!response.ok) {
-      const detail = (await response.text().catch(() => '')).slice(0, 300);
-      const message = `AI service answered ${response.status}: ${detail}`;
-      if (response.status === 429) throw new AiProviderError(message, 'rate_limited');
+      const body = await response.text().catch(() => '');
+      const message = `AI service (${model}) answered ${response.status}: ${body.slice(0, 300)}`;
+      const retryable = RETRYABLE_STATUS.has(response.status);
+      if (response.status === 429) {
+        const error = new AiProviderError(message, 'rate_limited', true);
+        // Gemini names the quota, e.g. "GenerateRequestsPerDayPerProjectPerModel-FreeTier".
+        error.dailyLimit = /PerDay/i.test(body);
+        throw error;
+      }
+      if (response.status === 503) throw new AiProviderError(message, 'rate_limited', true);
       if (response.status === 401 || response.status === 403) {
         throw new AiProviderError(message, 'auth');
       }
-      throw new AiProviderError(message, 'provider');
+      if (response.status === 404) throw new AiProviderError(message, 'model_unavailable');
+      throw new AiProviderError(message, 'provider', retryable);
     }
     return response;
   }
@@ -183,7 +265,8 @@ function jsonInstructions(request: JsonRequest): string {
 }
 
 interface StreamChunk {
-  choices?: { delta?: { content?: string | null } }[];
+  choices?: { delta?: { content?: string | null }; finish_reason?: string | null }[];
+  error?: { message?: string };
   usage?: ChatUsage;
   x_groq?: { usage?: ChatUsage };
 }
@@ -203,14 +286,19 @@ async function* readEvents(response: Response): AsyncGenerator<StreamChunk> {
       if (!line.startsWith('data:')) continue;
       const data = line.slice(5).trim();
       if (data === '[DONE]') return;
+      let parsed: unknown;
       try {
-        yield JSON.parse(data) as StreamChunk;
+        parsed = JSON.parse(data);
       } catch {
-        // A keep-alive or partial line; the next one carries on.
+        continue; // a keep-alive or partial line; the next one carries on
       }
+      // Gemini wraps errors in an array: [{ "error": { ... } }].
+      for (const item of Array.isArray(parsed) ? parsed : [parsed]) yield item as StreamChunk;
     }
   }
 }
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function toUsage(usage: ChatUsage | undefined): ProviderUsage {
   return { inputTokens: usage?.prompt_tokens ?? 0, outputTokens: usage?.completion_tokens ?? 0 };
