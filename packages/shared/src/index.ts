@@ -7,6 +7,7 @@ export * from './schemas/organization';
 export * from './schemas/profile';
 export * from './schemas/proposal';
 export * from './schemas/template';
+export * from './types/activity';
 export * from './types/api';
 export * from './types/auth';
 export * from './types/deadlines';

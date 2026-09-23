@@ -138,6 +138,14 @@ curl -sf -b "$JAR" -X DELETE "$BASE/orgs/$ORG/library/$BLOCK" > /dev/null || fai
 rm -f "$INVITEE_JAR"
 pass "content library: add, edit, count use, viewer reads only, delete"
 
+# --- activity trail -------------------------------------------------------
+ACTIVITY=$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/activity")
+echo "$ACTIVITY" | grep -q '"action":"proposal.created"' || fail "proposal creation not recorded"
+echo "$ACTIVITY" | grep -q '"action":"member.invited"' || fail "invitation not recorded"
+echo "$ACTIVITY" | grep -q '"userName"' || fail "activity entries have no author"
+echo "$ACTIVITY" | grep -q 'Smoke Proposal' || fail "activity entry has no title"
+pass "activity trail records who changed what"
+
 # --- account --------------------------------------------------------------
 curl -sf -b "$JAR" -X PATCH "$BASE/auth/me" -H 'Content-Type: application/json' -d '{"name":"Smoke Renamed"}' \
   | grep -q '"name":"Smoke Renamed"' || fail "account rename"

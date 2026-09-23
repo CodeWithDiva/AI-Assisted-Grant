@@ -118,6 +118,13 @@ export const router = createBrowserRouter([
                         ),
                       },
                       {
+                        path: 'activity',
+                        element: page(
+                          () => import('../features/activity/ActivityPage'),
+                          'ActivityPage',
+                        ),
+                      },
+                      {
                         path: 'team',
                         element: page(() => import('../features/team/TeamPage'), 'TeamPage'),
                       },

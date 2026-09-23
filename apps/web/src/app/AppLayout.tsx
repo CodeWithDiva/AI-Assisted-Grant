@@ -7,6 +7,7 @@ import {
   FileText,
   BookMarked,
   FolderOpen,
+  History,
   LayoutDashboard,
   LibraryBig,
   LogOut,
@@ -54,6 +55,7 @@ const navGroups: { label?: string; items: NavItem[] }[] = [
     items: [
       { to: '/profile', label: 'Profile', icon: Building2 },
       { to: '/team', label: 'Team', icon: Users },
+      { to: '/activity', label: 'Activity', icon: History },
     ],
   },
 ];
@@ -68,6 +70,7 @@ const sectionTitles: [RegExp, string][] = [
   [/^\/templates/, 'Funder templates'],
   [/^\/documents/, 'Documents'],
   [/^\/library/, 'Content library'],
+  [/^\/activity/, 'Activity'],
   [/^\/profile/, 'Profile'],
   [/^\/team/, 'Team'],
   [/^\/settings/, 'Settings'],

@@ -112,6 +112,12 @@ The AI never invents statistics, dates or names. When it needs a fact you have n
 | **Editor** | Write proposals, upload documents, manage templates and deadlines |
 | **Viewer** | Read everything, change nothing |
 
+## 9b. Activity
+
+**Activity** (sidebar, under Organization) is the record of everything that changed in the organization: who started a proposal, who edited which section, who invited whom, what was uploaded or deleted, and when. Proposal entries link straight to the proposal.
+
+Editing the same section repeatedly shows as one entry, so a day of writing stays readable. Nobody can edit or remove entries from the app.
+
 ## 10. Settings
 
 - **Account** — change your display name.

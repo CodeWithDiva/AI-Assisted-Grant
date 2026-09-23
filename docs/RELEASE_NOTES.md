@@ -24,6 +24,11 @@ A redesign of the interface, a working team feature, and production file storage
 - **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
 - **Change email address** from Settings, confirmed with the current password; the old address is notified
 
+**Activity trail (new)**
+- Every change in an organization is recorded: proposals, sections, templates, documents, library passages, deadlines, exports, profile and team
+- New Activity page grouped by day, with the author, the time and a link to the proposal
+- Repeated saves of one section fold into a single entry; proposal text is never stored in the trail
+
 **Identity**
 - New product mark: a compass needle, north in brass, on the dark shell — in the sidebar, on the sign-in screens and in emails
 - Real favicon plus installable icons (`apple-touch-icon.png`, 192 and 512 px) and a web manifest, so the app can be added to a phone's home screen; `pnpm icons` redraws them from the same mark

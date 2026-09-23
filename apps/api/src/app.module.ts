@@ -2,11 +2,13 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtAuthGuard } from './common/guards/jwt-auth.guard';
 import { validateEnv } from './config/env';
 import { AdminModule } from './modules/admin/admin.module';
 import { AiModule } from './modules/ai/ai.module';
+import { AuditInterceptor } from './modules/audit/audit.interceptor';
+import { AuditModule } from './modules/audit/audit.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { DeadlinesModule } from './modules/deadlines/deadlines.module';
 import { DocumentsModule } from './modules/documents/documents.module';
@@ -28,6 +30,7 @@ import { PrismaModule } from './prisma/prisma.module';
     // Baseline per-IP limit; auth and AI routes tighten it further with @Throttle.
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     PrismaModule,
+    AuditModule,
     StorageModule,
     EmailModule,
     AiModule,
@@ -47,6 +50,8 @@ import { PrismaModule } from './prisma/prisma.module';
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     // Every route needs a signed-in user unless it is marked @Public().
     { provide: APP_GUARD, useClass: JwtAuthGuard },
+    // Records who changed what, after the change succeeded.
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule {}

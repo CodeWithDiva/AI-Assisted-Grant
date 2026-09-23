@@ -51,6 +51,14 @@ Base URL: `http://localhost:4000/api/v1` (development).
 | POST | `/orgs/:orgId/documents` | OWNER, EDITOR | `multipart/form-data`: `file` + `kind` (`PAST_PROPOSAL`, `REPORT`, `RFP`, `OTHER`). PDF, DOCX, TXT, MD up to 20 MB. Text is extracted on upload. |
 | DELETE | `/orgs/:orgId/documents/:documentId` | OWNER, EDITOR | `204`. |
 
+## Activity trail
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| GET | `/orgs/:orgId/activity?before=<ISO>` | member | Newest first, 40 at a time. `before` continues from the oldest entry already read. Each entry carries `action`, `entity`, `entityId`, the author's name and safe metadata (titles, names, statuses — never proposal text). |
+
+Writes are recorded automatically for proposals, sections, templates, documents, library passages, deadlines, exports, the profile and team changes. Repeated saves of the same section by the same person inside 10 minutes fold into one entry.
+
 ## Content library
 
 Reusable passages (history, team, methods, policies) that writers insert into sections and the AI treats as organization facts.
