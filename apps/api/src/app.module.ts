@@ -15,6 +15,7 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { EmailModule } from './modules/email/email.module';
 import { ExportsModule } from './modules/exports/exports.module';
 import { HealthModule } from './modules/health/health.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { LibraryModule } from './modules/library/library.module';
 import { OrganizationsModule } from './modules/organizations/organizations.module';
 import { ProfileModule } from './modules/profile/profile.module';
@@ -31,6 +32,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ThrottlerModule.forRoot([{ name: 'default', ttl: 60_000, limit: 300 }]),
     PrismaModule,
     AuditModule,
+    NotificationsModule,
     StorageModule,
     EmailModule,
     AiModule,

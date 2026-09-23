@@ -21,6 +21,7 @@ import type { Env } from '../../config/env';
 import { PrismaService } from '../../prisma/prisma.service';
 import { invitationEmail } from '../email/email-templates';
 import { EmailService } from '../email/email.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const INVITATION_DAYS = 7;
 
@@ -30,6 +31,7 @@ export class OrganizationsService {
     private readonly prisma: PrismaService,
     private readonly email: EmailService,
     private readonly config: ConfigService<Env, true>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Creates the organization and makes the creator its owner. */
@@ -242,6 +244,22 @@ export class OrganizationsService {
         data: { acceptedAt: new Date() },
       }),
     ]);
+
+    const owners = await this.prisma.membership.findMany({
+      where: { organizationId: invitation.organizationId, role: 'OWNER' },
+      select: { userId: true },
+    });
+    await this.notifications.notify(
+      owners.map((owner) => owner.userId),
+      'MEMBER_JOINED',
+      {
+        organizationId: invitation.organizationId,
+        organizationName: membership.organization.name,
+        memberName: user.name,
+        role: invitation.role,
+      },
+      user.id,
+    );
 
     return { ...membership.organization, role: membership.role };
   }

@@ -1,7 +1,7 @@
 /** Dropdown menu. */
 import type { LucideIcon } from 'lucide-react';
 import { Check } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 export interface MenuItem {
   label: string;
@@ -13,6 +13,62 @@ export interface MenuItem {
 }
 
 /** A small dropdown menu. `trigger` receives the open state so it can style itself. */
+/** Shared by Menu and Popover: closes on an outside click or Escape. */
+function useDismissable(open: boolean, close: () => void) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (event: MouseEvent) => {
+      if (!ref.current?.contains(event.target as Node)) close();
+    };
+    const onEscape = (event: KeyboardEvent) => event.key === 'Escape' && close();
+    document.addEventListener('mousedown', onClick);
+    document.addEventListener('keydown', onEscape);
+    return () => {
+      document.removeEventListener('mousedown', onClick);
+      document.removeEventListener('keydown', onEscape);
+    };
+  }, [open, close]);
+
+  return ref;
+}
+
+/** A panel hung under a trigger, for content richer than a list of menu items. */
+export function Popover({
+  trigger,
+  children,
+  align = 'left',
+  width = 'w-80',
+  label,
+}: {
+  trigger: (open: boolean) => ReactNode;
+  children: (close: () => void) => ReactNode;
+  align?: 'left' | 'right';
+  width?: string;
+  label: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const close = useCallback(() => setOpen(false), []);
+  const ref = useDismissable(open, close);
+
+  return (
+    <div ref={ref} className="relative">
+      <div onClick={() => setOpen((value) => !value)}>{trigger(open)}</div>
+      {open ? (
+        <div
+          aria-label={label}
+          className={`absolute z-40 mt-1.5 animate-rise overflow-hidden rounded-lg border border-line bg-surface shadow-pop ${width} ${
+            align === 'right' ? 'right-0' : 'left-0'
+          }`}
+        >
+          {children(close)}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function Menu({
   trigger,
   items,

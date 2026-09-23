@@ -122,6 +122,12 @@ Writing a proposal is usually teamwork, so every member — including viewers, w
 | **Editor** | Write proposals, upload documents, manage templates and deadlines |
 | **Viewer** | Read everything, change nothing |
 
+## 9a. Notifications
+
+The bell in the top bar shows what needs your attention: review notes on proposals you own or have commented on, approvals and withdrawn approvals, people joining the organization, and deadline reminders. Opening one takes you straight there and marks it read; **Mark all read** clears the badge.
+
+Notifications cover every organization you belong to, and opening one switches to that organization. You are never notified about your own actions.
+
 ## 9b. Activity
 
 **Activity** (sidebar, under Organization) is the record of everything that changed in the organization: who started a proposal, who edited which section, who invited whom, what was uploaded or deleted, and when. Proposal entries link straight to the proposal.

@@ -22,6 +22,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { Avatar, Button, Menu, Spinner } from '../components/ui';
 import { authApi } from '../features/auth/api';
+import { NotificationBell } from '../features/notifications/NotificationBell';
 import { useAuth } from '../features/auth/AuthProvider';
 import { useOrgs } from '../features/organizations/OrgProvider';
 import { Wordmark } from './Wordmark';
@@ -304,6 +305,7 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
       </nav>
 
       <div className="ml-auto flex items-center gap-2">
+        <NotificationBell />
         {showNewProposal ? (
           <Button
             variant="primary"

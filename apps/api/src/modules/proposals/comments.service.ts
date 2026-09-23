@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { OrgRole, type CreateCommentInput, type ProposalCommentView } from '@grant/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const VIEW_SELECT = {
   id: true,
@@ -28,7 +29,10 @@ type CommentRow = {
 
 @Injectable()
 export class CommentsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   /** Every member can read and write review notes, including viewers. */
   async list(organizationId: string, proposalId: string): Promise<ProposalCommentView[]> {
@@ -56,6 +60,8 @@ export class CommentsService {
       if (!section) throw new NotFoundException('Section not found');
     }
 
+    // Watchers are read before the note is written, so the author is not told about it.
+    const watchers = await this.notifications.watchersOf(organizationId, proposalId);
     const comment = await this.prisma.proposalComment.create({
       data: {
         proposalId,
@@ -65,6 +71,25 @@ export class CommentsService {
       },
       select: VIEW_SELECT,
     });
+
+    const proposal = await this.prisma.proposal.findUnique({
+      where: { id: proposalId },
+      select: { title: true },
+    });
+    await this.notifications.notify(
+      watchers,
+      'COMMENT_ADDED',
+      {
+        organizationId,
+        proposalId,
+        proposalTitle: proposal?.title ?? null,
+        sectionTitle: comment.section?.title ?? null,
+        authorName: comment.author?.name ?? null,
+        excerpt: comment.body.slice(0, 120),
+      },
+      userId,
+    );
+
     return toView(comment);
   }
 

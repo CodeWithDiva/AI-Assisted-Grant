@@ -64,6 +64,17 @@ Base URL: `http://localhost:4000/api/v1` (development).
 
 Proposals carry `approvedAt`, `approvedByName` and `openComments`. **Any edit to a section clears the approval**, so an approval always refers to the text that was read.
 
+## Notifications
+
+A person's own notifications, across every organization they belong to.
+
+| Method | Path | Notes |
+|--------|------|-------|
+| GET | `/notifications` | Newest 30, each with `type`, `payload`, `readAt`. Types: `COMMENT_ADDED`, `PROPOSAL_APPROVED`, `PROPOSAL_APPROVAL_WITHDRAWN`, `MEMBER_JOINED`, `DEADLINE_REMINDER`. |
+| POST | `/notifications/read` | `{ ids? }` — without `ids`, everything unread is marked read. `204`. |
+
+Nobody is notified about their own action.
+
 ## Activity trail
 
 | Method | Path | Role | Notes |

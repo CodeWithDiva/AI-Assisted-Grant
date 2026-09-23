@@ -158,8 +158,19 @@ curl -sf -b "$JAR" "$BASE/orgs/$ORG/proposals/$PROP" | grep -q '"approvedAt":nul
   || fail "editing did not withdraw the approval"
 curl -sf -b "$JAR" -X PATCH "$BASE/orgs/$ORG/proposals/$PROP/comments/$NOTE" -H 'Content-Type: application/json' \
   -d '{"resolved":true}' | grep -q '"resolvedAt":"' || fail "note not resolved"
-rm -f "$INVITEE_JAR"
 pass "review notes, viewer limits and owner approval"
+
+# --- notifications --------------------------------------------------------
+NOTIFS=$(curl -sf -b "$JAR" "$BASE/notifications")
+echo "$NOTIFS" | grep -q '"type":"COMMENT_ADDED"' || fail "no notification for the viewer's note"
+echo "$NOTIFS" | grep -q '"type":"MEMBER_JOINED"' || fail "no notification for the new member"
+[ "$(echo "$NOTIFS" | json '.filter(n=>!n.readAt).length')" -ge 2 ] || fail "notifications already read"
+# The author is never told about their own note.
+curl -sf -b "$INVITEE_JAR" "$BASE/notifications" | grep -q '"type":"COMMENT_ADDED"'   && fail "the author was notified about their own note"
+curl -sf -b "$JAR" -X POST "$BASE/notifications/read" -H 'Content-Type: application/json' -d '{}' > /dev/null
+[ "$(curl -sf -b "$JAR" "$BASE/notifications" | json '.filter(n=>!n.readAt).length')" = "0" ]   || fail "notifications not marked read"
+rm -f "$INVITEE_JAR"
+pass "notifications reach the right people and can be marked read"
 
 # --- activity trail -------------------------------------------------------
 ACTIVITY=$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/activity")

@@ -24,6 +24,11 @@ A redesign of the interface, a working team feature, and production file storage
 - **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
 - **Change email address** from Settings, confirmed with the current password; the old address is notified
 
+**Notifications (new)**
+- A bell in the top bar with an unread count: review notes, approvals, new members and deadline reminders
+- Opening one switches to the right organization, goes to the proposal or deadline and marks it read; "Mark all read" clears the rest
+- Nobody is notified about their own actions
+
 **Review and sign-off (new)**
 - Review notes on a proposal or on one section, written by any member (viewers included), resolved rather than deleted
 - Open-note counts in the proposal header and the proposals list

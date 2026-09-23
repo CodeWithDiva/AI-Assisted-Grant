@@ -9,6 +9,7 @@ import type {
 } from '@grant/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiService } from '../ai/ai.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import {
   buildDraftUserMessage,
   buildRefineUserMessage,
@@ -24,6 +25,7 @@ export class ProposalsService {
     private readonly prisma: PrismaService,
     private readonly ai: AiService,
     private readonly context: ProposalContextService,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /** Copies the template's sections onto the proposal so later template edits cannot disturb it. */
@@ -181,13 +183,27 @@ export class ProposalsService {
     approved: boolean,
   ): Promise<ProposalDetail> {
     await this.requireProposal(organizationId, proposalId);
+    const watchers = await this.notifications.watchersOf(organizationId, proposalId);
     await this.prisma.proposal.update({
       where: { id: proposalId },
       data: approved
         ? { approvedAt: new Date(), approvedById: userId }
         : { approvedAt: null, approvedById: null },
     });
-    return this.findOne(organizationId, proposalId);
+
+    const detail = await this.findOne(organizationId, proposalId);
+    await this.notifications.notify(
+      watchers,
+      approved ? 'PROPOSAL_APPROVED' : 'PROPOSAL_APPROVAL_WITHDRAWN',
+      {
+        organizationId,
+        proposalId,
+        proposalTitle: detail.title,
+        byName: detail.approvedByName,
+      },
+      userId,
+    );
+    return detail;
   }
 
   async remove(organizationId: string, proposalId: string): Promise<void> {
