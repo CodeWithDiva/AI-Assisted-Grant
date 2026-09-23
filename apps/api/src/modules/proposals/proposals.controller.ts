@@ -75,9 +75,10 @@ export class ProposalsController {
   update(
     @Param('orgId') orgId: string,
     @Param('proposalId') proposalId: string,
+    @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(updateProposalSchema)) body: UpdateProposalInput,
   ) {
-    return this.proposals.update(orgId, proposalId, body);
+    return this.proposals.update(orgId, proposalId, body, user.id);
   }
 
   @Delete(':proposalId')
@@ -160,7 +161,9 @@ export class ProposalsController {
   }
 
   /** Deterministic limit checks plus an AI review against the funder's criteria. */
+  // The AI checks cost money or free-tier quota, so read-only members do not start them.
   @Post(':proposalId/compliance')
+  @Roles(OrgRole.OWNER, OrgRole.EDITOR)
   @HttpCode(200)
   complianceCheck(
     @Param('orgId') orgId: string,
@@ -171,6 +174,7 @@ export class ProposalsController {
   }
 
   @Post(':proposalId/fit-score')
+  @Roles(OrgRole.OWNER, OrgRole.EDITOR)
   @HttpCode(200)
   fitScore(
     @Param('orgId') orgId: string,

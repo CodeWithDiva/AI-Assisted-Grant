@@ -24,6 +24,9 @@ export interface ProposalSummary {
   sectionCount: number;
   completedSections: number;
   nextDeadline: string | null;
+  /** Who is responsible for writing it. */
+  ownerId: string | null;
+  ownerName: string | null;
   /** Set once an owner has approved it for submission; any later edit clears it. */
   approvedAt: string | null;
   approvedByName: string | null;

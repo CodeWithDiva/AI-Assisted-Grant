@@ -10,6 +10,8 @@ export const createProposalSchema = z.object({
 export type CreateProposalInput = z.infer<typeof createProposalSchema>;
 
 export const updateProposalSchema = z.object({
+  /** The member responsible for writing it; null leaves it unassigned. */
+  ownerId: z.string().trim().min(1).nullable().optional(),
   title: z.string().trim().min(2).max(200).optional(),
   status: z.enum(ProposalStatus).optional(),
   requestedAmount: z.number().nonnegative().optional(),

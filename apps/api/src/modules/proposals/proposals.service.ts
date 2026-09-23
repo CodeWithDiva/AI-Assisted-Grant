@@ -79,6 +79,7 @@ export class ProposalsService {
           take: 1,
           select: { dueAt: true },
         },
+        owner: { select: { name: true } },
         approvedBy: { select: { name: true } },
         _count: { select: { comments: { where: { resolvedAt: null } } } },
       },
@@ -96,6 +97,8 @@ export class ProposalsService {
       sectionCount: proposal.sections.length,
       completedSections: proposal.sections.filter((section) => section.wordCount > 0).length,
       nextDeadline: proposal.deadlines[0]?.dueAt.toISOString() ?? null,
+      ownerId: proposal.ownerId,
+      ownerName: proposal.owner?.name ?? null,
       approvedAt: proposal.approvedAt?.toISOString() ?? null,
       approvedByName: proposal.approvedBy?.name ?? null,
       openComments: proposal._count.comments,
@@ -115,6 +118,7 @@ export class ProposalsService {
           take: 1,
           select: { dueAt: true },
         },
+        owner: { select: { name: true } },
         approvedBy: { select: { name: true } },
         _count: { select: { comments: { where: { resolvedAt: null } } } },
       },
@@ -146,6 +150,8 @@ export class ProposalsService {
       sectionCount: sections.length,
       completedSections: sections.filter((section) => section.wordCount > 0).length,
       nextDeadline: proposal.deadlines[0]?.dueAt.toISOString() ?? null,
+      ownerId: proposal.ownerId,
+      ownerName: proposal.owner?.name ?? null,
       approvedAt: proposal.approvedAt?.toISOString() ?? null,
       approvedByName: proposal.approvedBy?.name ?? null,
       openComments: proposal._count.comments,
@@ -158,18 +164,33 @@ export class ProposalsService {
     organizationId: string,
     proposalId: string,
     input: UpdateProposalInput,
+    actingUserId?: string,
   ): Promise<ProposalDetail> {
-    await this.requireProposal(organizationId, proposalId);
+    const existing = await this.requireProposalOwner(organizationId, proposalId);
+    if (input.ownerId) await this.requireMember(organizationId, input.ownerId);
+
     await this.prisma.proposal.update({
       where: { id: proposalId },
       data: {
         title: input.title,
         status: input.status,
         requestedAmount: input.requestedAmount,
+        ...(input.ownerId !== undefined ? { ownerId: input.ownerId } : {}),
         ...(input.status === 'SUBMITTED' ? { submittedAt: new Date() } : {}),
       },
     });
-    return this.findOne(organizationId, proposalId);
+
+    const detail = await this.findOne(organizationId, proposalId);
+    // Being handed a proposal is worth hearing about.
+    if (input.ownerId && input.ownerId !== existing.ownerId) {
+      await this.notifications.notify(
+        [input.ownerId],
+        'PROPOSAL_ASSIGNED',
+        { organizationId, proposalId, proposalTitle: detail.title },
+        actingUserId,
+      );
+    }
+    return detail;
   }
 
   /**
@@ -404,6 +425,27 @@ export class ProposalsService {
       where: { id: proposalId },
       data: { updatedAt: new Date(), approvedAt: null, approvedById: null },
     });
+  }
+
+  /** The proposal, with who is currently responsible for it. */
+  private async requireProposalOwner(organizationId: string, proposalId: string) {
+    const proposal = await this.prisma.proposal.findFirst({
+      where: { id: proposalId, organizationId },
+      select: { id: true, ownerId: true },
+    });
+    if (!proposal) throw new NotFoundException('Proposal not found');
+    return proposal;
+  }
+
+  /** A proposal can only be handed to someone who belongs to the organization. */
+  private async requireMember(organizationId: string, userId: string): Promise<void> {
+    const membership = await this.prisma.membership.findUnique({
+      where: { userId_organizationId: { userId, organizationId } },
+      select: { userId: true },
+    });
+    if (!membership) {
+      throw new BadRequestException('That person is not a member of this organization');
+    }
   }
 
   private async requireProposal(organizationId: string, proposalId: string) {
