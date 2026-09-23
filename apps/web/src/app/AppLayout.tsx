@@ -23,6 +23,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { Avatar, Button, Menu, Spinner } from '../components/ui';
 import { authApi } from '../features/auth/api';
 import { NotificationBell } from '../features/notifications/NotificationBell';
+import { usePermissions } from '../features/organizations/permissions';
 import { useAuth } from '../features/auth/AuthProvider';
 import { useOrgs } from '../features/organizations/OrgProvider';
 import { Wordmark } from './Wordmark';
@@ -277,8 +278,10 @@ function TopBar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const { canWrite } = usePermissions();
   const section = sectionTitles.find(([pattern]) => pattern.test(location.pathname))?.[1] ?? '';
   const showNewProposal =
+    canWrite &&
     activeOrg &&
     location.pathname !== '/proposals' &&
     !location.pathname.startsWith('/proposals/new');

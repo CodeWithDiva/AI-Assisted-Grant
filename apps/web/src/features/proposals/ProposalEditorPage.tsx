@@ -1,10 +1,4 @@
-import {
-  countWords,
-  OrgRole,
-  ProposalStatus,
-  RefineAction,
-  type ProposalSectionView,
-} from '@grant/shared';
+import { countWords, ProposalStatus, RefineAction, type ProposalSectionView } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { BadgeCheck, BookMarked, ChevronDown, ClipboardCheck, MessageSquare } from 'lucide-react';
@@ -23,6 +17,8 @@ import {
 import { insertPassage, libraryApi } from '../library/api';
 import { LibraryPanel } from '../library/LibraryPanel';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
+import { usePermissions } from '../organizations/permissions';
+import { teamApi } from '../team/api';
 import { proposalsApi } from './api';
 import { CompliancePanel } from './CompliancePanel';
 import { ExportButtons } from './ExportButtons';
@@ -42,6 +38,7 @@ const refineLabels: Record<RefineAction, string> = {
 export function ProposalEditorPage() {
   const { proposalId = '' } = useParams();
   const { activeOrg } = useOrgs();
+  const { canWrite, isOwner } = usePermissions();
   const orgId = activeOrg?.id ?? '';
   const queryClient = useQueryClient();
 
@@ -176,6 +173,21 @@ export function ProposalEditorPage() {
     },
   });
 
+  const assign = useMutation({
+    mutationFn: (ownerId: string | null) => proposalsApi.update(orgId, proposalId, { ownerId }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['proposals', orgId] });
+      await proposal.refetch();
+    },
+  });
+
+  // Only loaded when someone may reassign the proposal.
+  const members = useQuery({
+    queryKey: ['members', orgId],
+    queryFn: () => teamApi.members(orgId),
+    enabled: canWrite,
+  });
+
   const setStatus = useMutation({
     mutationFn: (status: ProposalStatus) => proposalsApi.update(orgId, proposalId, { status }),
     onSuccess: async () => {
@@ -198,24 +210,28 @@ export function ProposalEditorPage() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2.5">
-            <Menu
-              width="w-48"
-              trigger={(open) => (
-                <button
-                  type="button"
-                  title="Change status"
-                  className={`inline-flex items-center gap-1 rounded-full pr-1.5 ${open ? 'ring-3 ring-accent-100' : ''}`}
-                >
-                  <Badge tone={statusTones[data.status]}>{statusLabels[data.status]}</Badge>
-                  <ChevronDown className="size-3.5 text-ink-400" />
-                </button>
-              )}
-              items={Object.values(ProposalStatus).map((status) => ({
-                label: statusLabels[status],
-                selected: status === data.status,
-                onSelect: () => setStatus.mutate(status),
-              }))}
-            />
+            {canWrite ? (
+              <Menu
+                width="w-48"
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    title="Change status"
+                    className={`inline-flex items-center gap-1 rounded-full pr-1.5 ${open ? 'ring-3 ring-accent-100' : ''}`}
+                  >
+                    <Badge tone={statusTones[data.status]}>{statusLabels[data.status]}</Badge>
+                    <ChevronDown className="size-3.5 text-ink-400" />
+                  </button>
+                )}
+                items={Object.values(ProposalStatus).map((status) => ({
+                  label: statusLabels[status],
+                  selected: status === data.status,
+                  onSelect: () => setStatus.mutate(status),
+                }))}
+              />
+            ) : (
+              <Badge tone={statusTones[data.status]}>{statusLabels[data.status]}</Badge>
+            )}
             <span className="truncate text-[13px] text-ink-400">
               {[data.funderName, data.templateName].filter(Boolean).join(' · ')}
             </span>
@@ -223,6 +239,42 @@ export function ProposalEditorPage() {
           <h1 className="mt-2.5 font-display text-[30px] leading-[1.15] tracking-[-0.01em] text-ink-900">
             {data.title}
           </h1>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[13.5px] text-ink-600">
+            <span>Assigned to</span>
+            {canWrite ? (
+              <Menu
+                width="w-56"
+                trigger={(open) => (
+                  <button
+                    type="button"
+                    title="Assign this proposal"
+                    aria-label="Assign this proposal"
+                    className={`inline-flex items-center gap-1 rounded-md border border-line-strong bg-surface px-2 py-1 text-[13px] font-medium text-ink-900 hover:bg-paper ${
+                      open ? 'ring-3 ring-accent-100' : ''
+                    }`}
+                  >
+                    {data.ownerName ?? 'Nobody'}
+                    <ChevronDown className="size-3.5 text-ink-400" />
+                  </button>
+                )}
+                items={[
+                  ...(members.data ?? []).map((member) => ({
+                    label: member.user.name,
+                    description: member.user.email,
+                    selected: member.user.id === data.ownerId,
+                    onSelect: () => assign.mutate(member.user.id),
+                  })),
+                  {
+                    label: 'Nobody',
+                    selected: !data.ownerId,
+                    onSelect: () => assign.mutate(null),
+                  },
+                ]}
+              />
+            ) : (
+              <span className="font-medium text-ink-900">{data.ownerName ?? 'Nobody'}</span>
+            )}
+          </div>
           <p className="tabular mt-1.5 text-ink-600">
             {data.completedSections} of {data.sectionCount} sections written
             {data.requestedAmount
@@ -231,19 +283,21 @@ export function ProposalEditorPage() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <Button icon={ClipboardCheck} onClick={() => setShowCompliance((value) => !value)}>
-            {showCompliance ? 'Hide review' : 'Review draft'}
-          </Button>
-          <ExportButtons orgId={orgId} proposalId={proposalId} />
-        </div>
+        {canWrite ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Button icon={ClipboardCheck} onClick={() => setShowCompliance((value) => !value)}>
+              {showCompliance ? 'Hide review' : 'Review draft'}
+            </Button>
+            <ExportButtons orgId={orgId} proposalId={proposalId} />
+          </div>
+        ) : null}
       </header>
 
       <ApprovalBar
         approvedAt={data.approvedAt}
         approvedByName={data.approvedByName}
         openComments={data.openComments}
-        isOwner={activeOrg.role === OrgRole.OWNER}
+        isOwner={isOwner}
         pending={approval.isPending}
         error={approval.error?.message}
         onApprove={() => approval.mutate(true)}
@@ -335,27 +389,31 @@ export function ProposalEditorPage() {
               ) : null}
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => generate.mutate()}
-                >
-                  {busy ? 'Writing…' : text.trim() ? 'Rewrite with AI' : 'Write with AI'}
-                </Button>
-
-                {Object.values(RefineAction)
-                  .filter((action) => action !== RefineAction.CUSTOM)
-                  .map((action) => (
+                {canWrite ? (
+                  <>
                     <Button
-                      key={action}
+                      variant="primary"
                       size="sm"
-                      disabled={busy || !text.trim()}
-                      onClick={() => refine.mutate(action)}
+                      disabled={busy}
+                      onClick={() => generate.mutate()}
                     >
-                      {refineLabels[action]}
+                      {busy ? 'Writing…' : text.trim() ? 'Rewrite with AI' : 'Write with AI'}
                     </Button>
-                  ))}
+
+                    {Object.values(RefineAction)
+                      .filter((action) => action !== RefineAction.CUSTOM)
+                      .map((action) => (
+                        <Button
+                          key={action}
+                          size="sm"
+                          disabled={busy || !text.trim()}
+                          onClick={() => refine.mutate(action)}
+                        >
+                          {refineLabels[action]}
+                        </Button>
+                      ))}
+                  </>
+                ) : null}
 
                 <button
                   type="button"
@@ -366,12 +424,14 @@ export function ProposalEditorPage() {
                 </button>
               </div>
 
-              <input
-                value={instruction}
-                onChange={(event) => setInstruction(event.target.value)}
-                placeholder="Optional instruction — e.g. lead with the 2026 flood response"
-                className="mt-3 w-full rounded-md border border-line bg-paper px-3 py-2 text-[13.5px] text-ink-900 placeholder:text-ink-300 focus:border-accent-600 focus:bg-surface focus:outline-none"
-              />
+              {canWrite ? (
+                <input
+                  value={instruction}
+                  onChange={(event) => setInstruction(event.target.value)}
+                  placeholder="Optional instruction — e.g. lead with the 2026 flood response"
+                  className="mt-3 w-full rounded-md border border-line bg-paper px-3 py-2 text-[13.5px] text-ink-900 placeholder:text-ink-300 focus:border-accent-600 focus:bg-surface focus:outline-none"
+                />
+              ) : null}
             </div>
 
             <Alert>{generate.error?.message ?? refine.error?.message ?? save.error?.message}</Alert>
@@ -379,7 +439,7 @@ export function ProposalEditorPage() {
             <FormattingToolbar
               textareaRef={textareaRef}
               text={text}
-              disabled={busy}
+              disabled={busy || !canWrite}
               preview={preview}
               onPreviewChange={setPreview}
               onChange={(value) => {
@@ -406,30 +466,34 @@ export function ProposalEditorPage() {
                       </span>
                     ) : null}
                   </button>
-                  <button
-                    type="button"
-                    disabled={busy || preview}
-                    aria-expanded={librarySource !== null}
-                    onMouseDown={(event) => event.preventDefault()}
-                    onClick={() => {
-                      if (librarySource) return setLibrarySource(null);
-                      const area = textareaRef.current;
-                      const picked = area ? text.slice(area.selectionStart, area.selectionEnd) : '';
-                      setLibrarySource(
-                        picked.trim()
-                          ? { text: picked, isSelection: true }
-                          : { text, isSelection: false },
-                      );
-                    }}
-                    className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] disabled:opacity-40 ${
-                      librarySource
-                        ? 'bg-accent-50 text-accent-700'
-                        : 'text-ink-600 hover:bg-paper-dark hover:text-ink-900'
-                    }`}
-                  >
-                    <BookMarked className="size-4" />
-                    Library
-                  </button>
+                  {canWrite ? (
+                    <button
+                      type="button"
+                      disabled={busy || preview}
+                      aria-expanded={librarySource !== null}
+                      onMouseDown={(event) => event.preventDefault()}
+                      onClick={() => {
+                        if (librarySource) return setLibrarySource(null);
+                        const area = textareaRef.current;
+                        const picked = area
+                          ? text.slice(area.selectionStart, area.selectionEnd)
+                          : '';
+                        setLibrarySource(
+                          picked.trim()
+                            ? { text: picked, isSelection: true }
+                            : { text, isSelection: false },
+                        );
+                      }}
+                      className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] disabled:opacity-40 ${
+                        librarySource
+                          ? 'bg-accent-50 text-accent-700'
+                          : 'text-ink-600 hover:bg-paper-dark hover:text-ink-900'
+                      }`}
+                    >
+                      <BookMarked className="size-4" />
+                      Library
+                    </button>
+                  ) : null}
                 </>
               }
             />
@@ -476,7 +540,7 @@ export function ProposalEditorPage() {
               <textarea
                 ref={textareaRef}
                 value={text}
-                readOnly={busy}
+                readOnly={busy || !canWrite}
                 onChange={(event) => {
                   dirty.current = true;
                   setText(event.target.value);
@@ -523,9 +587,15 @@ export function ProposalEditorPage() {
                 ) : null}
               </div>
 
-              <Button size="sm" disabled={save.isPending || busy} onClick={() => save.mutate(text)}>
-                Save
-              </Button>
+              {canWrite ? (
+                <Button
+                  size="sm"
+                  disabled={save.isPending || busy}
+                  onClick={() => save.mutate(text)}
+                >
+                  Save
+                </Button>
+              ) : null}
             </div>
 
             {placeholders > 0 ? (

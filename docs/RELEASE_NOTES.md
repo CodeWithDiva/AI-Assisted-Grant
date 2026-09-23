@@ -24,6 +24,12 @@ A redesign of the interface, a working team feature, and production file storage
 - **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
 - **Change email address** from Settings, confirmed with the current password; the old address is notified
 
+**Working as an organization**
+- Every proposal has someone responsible: assign it in the editor, filter the list by **Assigned to me**, and the new owner is notified
+- Owners see **Who is writing what** on the dashboard: open proposals, amounts, nearest deadline and unassigned work per person
+- The interface follows the role: read-only members see the pages without the buttons that write, and the editor's text box is read-only for them
+- Read-only members can no longer start AI reviews or fit scores, which cost money or free-tier quota
+
 **Notifications (new)**
 - A bell in the top bar with an unread count: review notes, approvals, new members and deadline reminders
 - Opening one switches to the right organization, goes to the proposal or deadline and marks it read; "Mark all read" clears the rest

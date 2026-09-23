@@ -1,6 +1,6 @@
 import type { NotificationView } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, BadgeCheck, CalendarClock, MessageSquare, UserPlus } from 'lucide-react';
+import { Bell, BadgeCheck, CalendarClock, FileText, MessageSquare, UserPlus } from 'lucide-react';
 import { useNavigate } from 'react-router';
 import { Spinner } from '../../components/ui';
 import { Popover } from '../../components/ui/menu';
@@ -10,6 +10,7 @@ import { describeNotification } from './describe';
 
 const ICONS = {
   COMMENT_ADDED: MessageSquare,
+  PROPOSAL_ASSIGNED: FileText,
   PROPOSAL_APPROVED: BadgeCheck,
   PROPOSAL_APPROVAL_WITHDRAWN: BadgeCheck,
   MEMBER_JOINED: UserPlus,

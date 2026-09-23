@@ -113,7 +113,7 @@ Reusable passages (history, team, methods, policies) that writers insert into se
 | POST | `/orgs/:orgId/proposals` | OWNER, EDITOR | `{ templateId, title, requestedAmount? }`. Copies the template's sections onto the proposal. |
 | GET | `/orgs/:orgId/proposals` | member | Includes progress and the next deadline. |
 | GET | `/orgs/:orgId/proposals/:proposalId` | member | With all sections and their text. |
-| PATCH | `/orgs/:orgId/proposals/:proposalId` | OWNER, EDITOR | `{ title?, status?, requestedAmount? }`. `SUBMITTED` stamps `submittedAt`. |
+| PATCH | `/orgs/:orgId/proposals/:proposalId` | OWNER, EDITOR | `{ title?, status?, requestedAmount?, ownerId? }`. `ownerId` hands the proposal to a member (`null` unassigns) and notifies them; a non-member is refused. `SUBMITTED` stamps `submittedAt`. |
 | DELETE | `/orgs/:orgId/proposals/:proposalId` | OWNER, EDITOR | `204`. |
 | PATCH | `/orgs/:orgId/proposals/:proposalId/sections/:sectionId` | OWNER, EDITOR | `{ text }`. Saves a version when the text changed. |
 | GET | `/orgs/:orgId/proposals/:proposalId/sections/:sectionId/versions` | member | Last 20 versions, newest first. |
@@ -143,8 +143,8 @@ The generated text is saved and a version recorded before `done` is sent.
 
 | Method | Path | Notes |
 |--------|------|-------|
-| POST | `/orgs/:orgId/proposals/:proposalId/compliance` | Word/character limits, empty sections, leftover `[NEEDS INPUT: …]` placeholders and missing deadline are checked in code; scoring against the funder's criteria is done by the AI. Without an API key the code checks still run. |
-| POST | `/orgs/:orgId/proposals/:proposalId/fit-score` | **AI** — 0-100 fit against the funder's eligibility, with reasons and gaps. |
+| POST | `/orgs/:orgId/proposals/:proposalId/compliance` | OWNER, EDITOR — Word/character limits, empty sections, leftover `[NEEDS INPUT: …]` placeholders and missing deadline are checked in code; scoring against the funder's criteria is done by the AI. Without an API key the code checks still run. |
+| POST | `/orgs/:orgId/proposals/:proposalId/fit-score` | OWNER, EDITOR — **AI**, 0-100 fit against the funder's eligibility, with reasons and gaps. |
 
 ## Deadlines
 

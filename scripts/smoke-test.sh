@@ -160,6 +160,15 @@ curl -sf -b "$JAR" -X PATCH "$BASE/orgs/$ORG/proposals/$PROP/comments/$NOTE" -H 
   -d '{"resolved":true}' | grep -q '"resolvedAt":"' || fail "note not resolved"
 pass "review notes, viewer limits and owner approval"
 
+# --- assignment and read-only limits --------------------------------------
+INVITEE_ID=$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/members" | json '.find(m=>m.role==="VIEWER").user.id')
+curl -sf -b "$JAR" -X PATCH "$BASE/orgs/$ORG/proposals/$PROP" -H 'Content-Type: application/json'   -d "{\"ownerId\":\"$INVITEE_ID\"}" | grep -q '"ownerName":"Invited Viewer"'   || fail "proposal not assigned"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$JAR" -X PATCH "$BASE/orgs/$ORG/proposals/$PROP"   -H 'Content-Type: application/json' -d '{"ownerId":"not-a-member"}')" = "400" ]   || fail "a stranger could be assigned a proposal"
+# AI checks cost money, so read-only members cannot start them.
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/proposals/$PROP/compliance")" = "403" ]   || fail "a viewer could start an AI review"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/proposals/$PROP/fit-score")" = "403" ]   || fail "a viewer could start an AI fit score"
+pass "assignment, and read-only members cannot spend AI"
+
 # --- notifications --------------------------------------------------------
 NOTIFS=$(curl -sf -b "$JAR" "$BASE/notifications")
 echo "$NOTIFS" | grep -q '"type":"COMMENT_ADDED"' || fail "no notification for the viewer's note"

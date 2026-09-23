@@ -1,9 +1,19 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { Check, LibraryBig } from 'lucide-react';
+import { Check, LibraryBig, Lock } from 'lucide-react';
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { Alert, Button, Card, Field, PageTitle, SectionLabel, Spinner } from '../../components/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  EmptyState,
+  Field,
+  PageTitle,
+  SectionLabel,
+  Spinner,
+} from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
+import { usePermissions } from '../organizations/permissions';
 import { templatesApi } from '../templates/api';
 import { proposalsApi } from './api';
 
@@ -11,6 +21,7 @@ export function NewProposalPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { activeOrg } = useOrgs();
+  const { canWrite } = usePermissions();
   const orgId = activeOrg?.id ?? '';
 
   const [templateId, setTemplateId] = useState(searchParams.get('templateId') ?? '');
@@ -40,6 +51,15 @@ export function NewProposalPage() {
   });
 
   if (!activeOrg) return <NoOrganizationNotice />;
+  if (!canWrite) {
+    return (
+      <Card>
+        <EmptyState icon={Lock} title="Only owners and editors start proposals">
+          You can read everything here and leave review notes. Ask an owner if you need to write.
+        </EmptyState>
+      </Card>
+    );
+  }
 
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();

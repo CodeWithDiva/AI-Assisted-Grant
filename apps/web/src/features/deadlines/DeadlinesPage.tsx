@@ -20,9 +20,11 @@ import {
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { proposalsApi } from '../proposals/api';
 import { deadlinesApi } from './api';
+import { usePermissions } from '../organizations/permissions';
 
 export function DeadlinesPage() {
   const { activeOrg, isLoading } = useOrgs();
+  const { canWrite, isOwner } = usePermissions();
   const orgId = activeOrg?.id ?? '';
   const queryClient = useQueryClient();
 
@@ -101,14 +103,16 @@ export function DeadlinesPage() {
         description="Every owner and editor is emailed 14, 7, 3 and 1 day before each date."
         actions={
           <>
-            <Button
-              icon={BellRing}
-              onClick={() => sendReminders.mutate()}
-              disabled={sendReminders.isPending}
-            >
-              {sendReminders.data ? `${sendReminders.data.sent} sent` : 'Send due reminders'}
-            </Button>
-            {!adding ? (
+            {isOwner ? (
+              <Button
+                icon={BellRing}
+                onClick={() => sendReminders.mutate()}
+                disabled={sendReminders.isPending}
+              >
+                {sendReminders.data ? `${sendReminders.data.sent} sent` : 'Send due reminders'}
+              </Button>
+            ) : null}
+            {!adding && canWrite ? (
               <Button variant="primary" icon={Plus} onClick={() => setAdding(true)}>
                 Add deadline
               </Button>
@@ -187,9 +191,11 @@ export function DeadlinesPage() {
             icon={CalendarClock}
             title="No deadlines tracked yet"
             action={
-              <Button variant="primary" icon={Plus} onClick={() => setAdding(true)}>
-                Add the first one
-              </Button>
+              canWrite ? (
+                <Button variant="primary" icon={Plus} onClick={() => setAdding(true)}>
+                  Add the first one
+                </Button>
+              ) : undefined
             }
           >
             Add the funder&apos;s submission date and the reminders take care of themselves.
@@ -251,12 +257,14 @@ export function DeadlinesPage() {
                         </span>
                       ) : null}
                       <div className="flex shrink-0 items-center">
-                        <IconButton
-                          icon={Check}
-                          label={done ? 'Mark as not done' : 'Mark as done'}
-                          onClick={() => toggle.mutate(deadline)}
-                          className={done ? 'text-accent-600' : ''}
-                        />
+                        {canWrite ? (
+                          <IconButton
+                            icon={Check}
+                            label={done ? 'Mark as not done' : 'Mark as done'}
+                            onClick={() => toggle.mutate(deadline)}
+                            className={done ? 'text-accent-600' : ''}
+                          />
+                        ) : null}
                         <a
                           href={deadlinesApi.icsUrl(orgId, deadline.id)}
                           title="Add to calendar"
@@ -265,12 +273,14 @@ export function DeadlinesPage() {
                         >
                           <CalendarPlus className="size-4" strokeWidth={1.8} />
                         </a>
-                        <IconButton
-                          icon={Trash2}
-                          label="Delete"
-                          tone="danger"
-                          onClick={() => remove.mutate(deadline.id)}
-                        />
+                        {canWrite ? (
+                          <IconButton
+                            icon={Trash2}
+                            label="Delete"
+                            tone="danger"
+                            onClick={() => remove.mutate(deadline.id)}
+                          />
+                        ) : null}
                       </div>
                     </li>
                   );

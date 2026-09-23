@@ -12,6 +12,7 @@ import {
   Skeleton,
 } from '../../components/ui';
 import { documentsApi } from './api';
+import { usePermissions } from '../organizations/permissions';
 
 const kindLabels: Record<DocumentKind, string> = {
   PAST_PROPOSAL: 'Past proposal',
@@ -36,6 +37,7 @@ const statusTones: Record<OrgDocument['status'], 'neutral' | 'amber' | 'green' |
 
 export function DocumentsPanel({ orgId }: { orgId: string }) {
   const queryClient = useQueryClient();
+  const { canWrite } = usePermissions();
   const [kind, setKind] = useState<DocumentKind>(DocumentKind.PAST_PROPOSAL);
   // Deleting is two clicks: the first asks, the second deletes.
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -64,29 +66,31 @@ export function DocumentsPanel({ orgId }: { orgId: string }) {
     <div className="space-y-6">
       <Alert>{upload.error?.message ?? remove.error?.message}</Alert>
 
-      <div className="rounded-lg border border-line bg-surface px-5 py-4">
-        <SectionLabel className="mb-3">Add a document</SectionLabel>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_1fr]">
-          <Select
-            label="Type"
-            value={kind}
-            onChange={(event) => setKind(event.target.value as DocumentKind)}
-          >
-            {Object.values(DocumentKind).map((value) => (
-              <option key={value} value={value}>
-                {kindLabels[value]}
-              </option>
-            ))}
-          </Select>
-          <FileDrop
-            accept=".pdf,.docx,.txt,.md"
-            hint="PDF, Word, text or Markdown, up to 20 MB. The text is read straight away."
-            busy={upload.isPending}
-            busyLabel="Uploading and reading the file"
-            onFile={(file) => upload.mutate(file)}
-          />
+      {canWrite ? (
+        <div className="rounded-lg border border-line bg-surface px-5 py-4">
+          <SectionLabel className="mb-3">Add a document</SectionLabel>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_1fr]">
+            <Select
+              label="Type"
+              value={kind}
+              onChange={(event) => setKind(event.target.value as DocumentKind)}
+            >
+              {Object.values(DocumentKind).map((value) => (
+                <option key={value} value={value}>
+                  {kindLabels[value]}
+                </option>
+              ))}
+            </Select>
+            <FileDrop
+              accept=".pdf,.docx,.txt,.md"
+              hint="PDF, Word, text or Markdown, up to 20 MB. The text is read straight away."
+              busy={upload.isPending}
+              busyLabel="Uploading and reading the file"
+              onFile={(file) => upload.mutate(file)}
+            />
+          </div>
         </div>
-      </div>
+      ) : null}
 
       {documents.isPending ? (
         <div className="space-y-px overflow-hidden rounded-lg border border-line bg-surface">
@@ -115,7 +119,7 @@ export function DocumentsPanel({ orgId }: { orgId: string }) {
                 </div>
               </div>
               <Badge tone={statusTones[doc.status]}>{statusLabels[doc.status]}</Badge>
-              {confirming === doc.id ? (
+              {!canWrite ? null : confirming === doc.id ? (
                 <span className="flex shrink-0 items-center gap-2 text-[13px]">
                   <button
                     type="button"

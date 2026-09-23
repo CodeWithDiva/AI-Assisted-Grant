@@ -7,9 +7,11 @@ import { Button, PageTitle, SectionLabel, Spinner } from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { templatesApi } from './api';
 import { ImportRfpPanel } from './ImportRfpPanel';
+import { usePermissions } from '../organizations/permissions';
 
 export function TemplatesPage() {
   const { activeOrg, isLoading } = useOrgs();
+  const { canWrite } = usePermissions();
   const [importing, setImporting] = useState(false);
   const orgId = activeOrg?.id ?? '';
 
@@ -31,7 +33,7 @@ export function TemplatesPage() {
         title="Funder templates"
         description="The sections, word limits and scoring criteria a funder expects — the skeleton every proposal is built on."
         actions={
-          !importing ? (
+          !importing && canWrite ? (
             <Button variant="primary" icon={FileUp} onClick={() => setImporting(true)}>
               Import from RFP
             </Button>

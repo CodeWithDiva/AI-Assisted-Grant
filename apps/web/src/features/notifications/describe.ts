@@ -21,6 +21,12 @@ export function describeNotification(notification: NotificationView): {
           : text('excerpt'),
         to: proposalLink,
       };
+    case 'PROPOSAL_ASSIGNED':
+      return {
+        text: `${text('proposalTitle') ?? 'A proposal'} was assigned to you`,
+        detail: null,
+        to: proposalLink,
+      };
     case 'PROPOSAL_APPROVED':
       return {
         text: `${text('byName') ?? 'An owner'} approved ${text('proposalTitle') ?? 'a proposal'} for submission`,

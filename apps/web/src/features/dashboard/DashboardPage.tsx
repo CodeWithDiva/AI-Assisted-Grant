@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../auth/AuthProvider';
 import { deadlinesApi } from '../deadlines/api';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
+import { usePermissions } from '../organizations/permissions';
 import { profileApi } from '../profile/api';
 import { proposalsApi } from '../proposals/api';
 import { statusLabels, statusTones } from '../proposals/status';
@@ -22,6 +23,7 @@ import { FocusCard } from './FocusCard';
 import { PipelineCard, FundingCard } from './PipelineCard';
 import { StatusMark } from './StatusMark';
 import { DashboardSkeleton } from './DashboardSkeleton';
+import { TeamWorkload } from './TeamWorkload';
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -33,6 +35,7 @@ function greeting(): string {
 export function DashboardPage() {
   const { user } = useAuth();
   const { activeOrg, isLoading } = useOrgs();
+  const { isOwner } = usePermissions();
   const orgId = activeOrg?.id ?? '';
   const enabled = Boolean(orgId);
 
@@ -150,6 +153,11 @@ export function DashboardPage() {
       </div>
 
       <PipelineCard proposals={allProposals} />
+
+      {/* Balancing the work is the owner's job, so only they see who is carrying what. */}
+      {isOwner && (members.data?.length ?? 0) > 1 ? (
+        <TeamWorkload proposals={allProposals} members={members.data ?? []} />
+      ) : null}
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <Card padded={false}>

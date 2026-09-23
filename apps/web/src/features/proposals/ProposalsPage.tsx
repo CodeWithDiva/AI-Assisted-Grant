@@ -16,7 +16,9 @@ import {
   Spinner,
   Tabs,
 } from '../../components/ui';
+import { useAuth } from '../auth/AuthProvider';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
+import { usePermissions } from '../organizations/permissions';
 import { proposalsApi } from './api';
 import { statusLabels, statusTones } from './status';
 
@@ -82,9 +84,12 @@ function ProgressCell({ proposal }: { proposal: ProposalSummary }) {
 
 export function ProposalsPage() {
   const { activeOrg, isLoading } = useOrgs();
+  const { canWrite } = usePermissions();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const orgId = activeOrg?.id ?? '';
   const [filter, setFilter] = useState<Filter>('ALL');
+  const [mineOnly, setMineOnly] = useState(false);
 
   const proposals = useQuery({
     queryKey: ['proposals', orgId],
@@ -95,7 +100,9 @@ export function ProposalsPage() {
   if (isLoading) return <Spinner />;
   if (!activeOrg) return <NoOrganizationNotice />;
 
-  const all = proposals.data ?? [];
+  const all = (proposals.data ?? []).filter(
+    (proposal) => !mineOnly || proposal.ownerId === user?.id,
+  );
   const visible = filter === 'ALL' ? all : all.filter((proposal) => proposal.status === filter);
   const count = (status: ProposalStatus) => all.filter((p) => p.status === status).length;
 
@@ -105,14 +112,16 @@ export function ProposalsPage() {
         title="Proposals"
         description="Every application you are writing or have sent, with its funder and deadline."
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => navigate('/proposals/new')}>
-            New proposal
-          </Button>
+          canWrite ? (
+            <Button variant="primary" icon={Plus} onClick={() => navigate('/proposals/new')}>
+              New proposal
+            </Button>
+          ) : undefined
         }
       />
 
       <Card padded={false}>
-        <div className="px-5 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 pt-3">
           <Tabs<Filter>
             value={filter}
             onChange={setFilter}
@@ -125,6 +134,15 @@ export function ProposalsPage() {
               { value: 'REJECTED', label: 'Rejected', count: count('REJECTED') },
             ]}
           />
+          <label className="flex shrink-0 items-center gap-1.5 pb-2 text-[13px] text-ink-600">
+            <input
+              type="checkbox"
+              checked={mineOnly}
+              onChange={(event) => setMineOnly(event.target.checked)}
+              className="size-3.5 accent-accent-600"
+            />
+            Assigned to me
+          </label>
         </div>
 
         {proposals.isPending ? (
@@ -171,7 +189,10 @@ export function ProposalsPage() {
                       <div className="mt-3">
                         <ProgressCell proposal={proposal} />
                       </div>
-                      <div className="tabular mt-3 flex items-center justify-between text-[12.5px]">
+                      <div className="tabular mt-3 text-[12.5px] text-ink-600">
+                        {proposal.ownerName ?? 'Unassigned'}
+                      </div>
+                      <div className="tabular mt-1 flex items-center justify-between text-[12.5px]">
                         <span className="text-ink-800">
                           {formatMoney(proposal.requestedAmount, proposal.currency)}
                         </span>
@@ -194,6 +215,7 @@ export function ProposalsPage() {
                 <thead>
                   <tr className="border-b border-line text-[12px] text-ink-400">
                     <th className="px-5 py-3 font-medium">Proposal</th>
+                    <th className="px-3 py-3 font-medium">Assigned to</th>
                     <th className="px-3 py-3 font-medium">Progress</th>
                     <th className="px-3 py-3 text-right font-medium">Requested</th>
                     <th className="px-3 py-3 font-medium">Next deadline</th>
@@ -220,6 +242,9 @@ export function ProposalsPage() {
                               .join(' · ') || 'No template'}
                           </div>
                           <ReviewMarks proposal={proposal} />
+                        </td>
+                        <td className="px-3 py-3.5 text-[13.5px] text-ink-600">
+                          {proposal.ownerName ?? <span className="text-ink-300">Unassigned</span>}
                         </td>
                         <td className="w-44 px-3 py-3.5">
                           <ProgressCell proposal={proposal} />
@@ -260,7 +285,7 @@ export function ProposalsPage() {
                 : `Nothing ${statusLabels[filter as ProposalStatus].toLowerCase()}`
             }
             action={
-              filter === 'ALL' ? (
+              filter === 'ALL' && canWrite ? (
                 <Button variant="primary" icon={Plus} onClick={() => navigate('/proposals/new')}>
                   Start a proposal
                 </Button>

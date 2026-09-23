@@ -76,6 +76,12 @@ In the editor:
 
 The AI never invents statistics, dates or names. When it needs a fact you have not given it, it writes a placeholder like `[NEEDS INPUT: 2025 number of beneficiaries]`. Replace every one before submitting — the review lists any that are left.
 
+## 5a. Who is writing which proposal
+
+Every proposal has one person responsible for it. In the editor, **Assigned to** hands it over; the new owner is notified, and the proposals list has an **Assigned to me** switch so each writer can see only their own work.
+
+Owners also get **Who is writing what** on the dashboard: how many open proposals each member carries, how much money they add up to, their nearest deadline, and anything still unassigned.
+
 ## 5b. Review notes and sign-off
 
 Writing a proposal is usually teamwork, so every member — including viewers, whose job is often exactly this — can leave notes.
@@ -120,7 +126,9 @@ Writing a proposal is usually teamwork, so every member — including viewers, w
 |------|--------|
 | **Owner** | Everything, including inviting, re-assigning and removing members |
 | **Editor** | Write proposals, upload documents, manage templates and deadlines |
-| **Viewer** | Read everything, change nothing |
+| **Viewer** | Read everything and leave review notes; change nothing, and cannot start AI work |
+
+Owners and editors see the buttons that write; a viewer sees the same pages without them, so nobody is offered something that will be refused.
 
 ## 9a. Notifications
 

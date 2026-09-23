@@ -24,6 +24,7 @@ import {
 } from '../../components/ui';
 import { NoOrganizationNotice, useOrgs } from '../organizations/OrgProvider';
 import { libraryApi } from './api';
+import { usePermissions } from '../organizations/permissions';
 
 type Filter = 'ALL' | LibraryCategory;
 
@@ -45,6 +46,7 @@ const SUGGESTIONS: { title: string; category: LibraryCategory }[] = [
 
 export function LibraryPage() {
   const { activeOrg, isLoading } = useOrgs();
+  const { canWrite } = usePermissions();
   const orgId = activeOrg?.id ?? '';
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<Filter>('ALL');
@@ -103,9 +105,11 @@ export function LibraryPage() {
         title="Content library"
         description="Approved passages you reuse from proposal to proposal: history, team, methods, policies. Insert them while writing; the AI draws on them too, so every application tells the same story."
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => startNew()}>
-            New passage
-          </Button>
+          canWrite ? (
+            <Button variant="primary" icon={Plus} onClick={() => startNew()}>
+              New passage
+            </Button>
+          ) : undefined
         }
       />
 
@@ -184,6 +188,7 @@ export function LibraryPage() {
                 <PassageCard
                   key={block.id}
                   block={block}
+                  canWrite={canWrite}
                   deleting={remove.isPending && remove.variables === block.id}
                   onEdit={() => {
                     save.reset();
@@ -211,18 +216,20 @@ export function LibraryPage() {
                 icon={BookMarked}
                 title="Start your library"
                 action={
-                  <div className="flex max-w-lg flex-wrap justify-center gap-2">
-                    {SUGGESTIONS.map((suggestion) => (
-                      <button
-                        key={suggestion.title}
-                        type="button"
-                        onClick={() => startNew(suggestion)}
-                        className="rounded-full border border-line-strong bg-surface px-3 py-1.5 text-[13px] text-ink-800 hover:border-accent-500 hover:bg-accent-50"
-                      >
-                        + {suggestion.title}
-                      </button>
-                    ))}
-                  </div>
+                  !canWrite ? undefined : (
+                    <div className="flex max-w-lg flex-wrap justify-center gap-2">
+                      {SUGGESTIONS.map((suggestion) => (
+                        <button
+                          key={suggestion.title}
+                          type="button"
+                          onClick={() => startNew(suggestion)}
+                          className="rounded-full border border-line-strong bg-surface px-3 py-1.5 text-[13px] text-ink-800 hover:border-accent-500 hover:bg-accent-50"
+                        >
+                          + {suggestion.title}
+                        </button>
+                      ))}
+                    </div>
+                  )
                 }
               >
                 Save the paragraphs you write again and again. Here are the ones most funders ask
@@ -307,11 +314,13 @@ function PassageForm({
 
 function PassageCard({
   block,
+  canWrite,
   deleting,
   onEdit,
   onDelete,
 }: {
   block: LibraryBlockView;
+  canWrite: boolean;
   deleting: boolean;
   onEdit: () => void;
   onDelete: () => void;
@@ -344,8 +353,8 @@ function PassageCard({
             label={copied ? 'Copied' : 'Copy text'}
             onClick={copy}
           />
-          <IconButton icon={Pencil} label="Edit" onClick={onEdit} />
-          {confirming ? (
+          {canWrite ? <IconButton icon={Pencil} label="Edit" onClick={onEdit} /> : null}
+          {!canWrite ? null : confirming ? (
             <span className="ml-1 flex items-center gap-2 text-[13px]">
               <button
                 type="button"
