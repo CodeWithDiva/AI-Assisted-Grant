@@ -51,6 +51,19 @@ Base URL: `http://localhost:4000/api/v1` (development).
 | POST | `/orgs/:orgId/documents` | OWNER, EDITOR | `multipart/form-data`: `file` + `kind` (`PAST_PROPOSAL`, `REPORT`, `RFP`, `OTHER`). PDF, DOCX, TXT, MD up to 20 MB. Text is extracted on upload. |
 | DELETE | `/orgs/:orgId/documents/:documentId` | OWNER, EDITOR | `204`. |
 
+## Review notes and approval
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| GET | `/orgs/:orgId/proposals/:proposalId/comments` | member | Oldest first, with the author, the section and who resolved it. |
+| POST | `/orgs/:orgId/proposals/:proposalId/comments` | member (viewers too) | `{ body, sectionId? }`. Without `sectionId` the note is about the whole proposal. |
+| PATCH | `/…/comments/:commentId` | member | `{ resolved }`. Resolved notes stay on the proposal as its review history. |
+| DELETE | `/…/comments/:commentId` | author or OWNER | `204`. |
+| POST | `/orgs/:orgId/proposals/:proposalId/approval` | OWNER | Signs the proposal off for submission. |
+| DELETE | `/orgs/:orgId/proposals/:proposalId/approval` | OWNER | Takes the approval back. |
+
+Proposals carry `approvedAt`, `approvedByName` and `openComments`. **Any edit to a section clears the approval**, so an approval always refers to the text that was read.
+
 ## Activity trail
 
 | Method | Path | Role | Notes |

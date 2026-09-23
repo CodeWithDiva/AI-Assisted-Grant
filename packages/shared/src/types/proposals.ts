@@ -24,6 +24,11 @@ export interface ProposalSummary {
   sectionCount: number;
   completedSections: number;
   nextDeadline: string | null;
+  /** Set once an owner has approved it for submission; any later edit clears it. */
+  approvedAt: string | null;
+  approvedByName: string | null;
+  /** Review notes still waiting to be dealt with. */
+  openComments: number;
   updatedAt: string;
 }
 

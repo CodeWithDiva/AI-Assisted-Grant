@@ -1,6 +1,7 @@
 export * from './enums';
 export * from './rich-text';
 export * from './schemas/auth';
+export * from './schemas/comment';
 export * from './schemas/deadline';
 export * from './schemas/library';
 export * from './schemas/organization';
@@ -11,6 +12,7 @@ export * from './types/activity';
 export * from './types/api';
 export * from './types/auth';
 export * from './types/deadlines';
+export * from './types/comments';
 export * from './types/documents';
 export * from './types/library';
 export * from './types/proposals';

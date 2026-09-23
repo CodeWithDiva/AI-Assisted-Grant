@@ -76,6 +76,16 @@ In the editor:
 
 The AI never invents statistics, dates or names. When it needs a fact you have not given it, it writes a placeholder like `[NEEDS INPUT: 2025 number of beneficiaries]`. Replace every one before submitting — the review lists any that are left.
 
+## 5b. Review notes and sign-off
+
+Writing a proposal is usually teamwork, so every member — including viewers, whose job is often exactly this — can leave notes.
+
+- **Notes** in the editor toolbar opens the review panel. A note is attached to the section you are on, or to the whole proposal if you untick the box.
+- Notes are **resolved**, not deleted, so the review history stays with the proposal. The author can delete their own; owners can delete any.
+- The proposal header and the proposals list show how many notes are still open.
+
+**Approval.** An owner reads the draft and presses **Approve for submission**. The header then shows who approved it and when. If anyone edits a section afterwards, the approval is withdrawn automatically — an approval always refers to the text that was read.
+
 ## 6. Review before you submit
 
 **Review draft** runs two checks:

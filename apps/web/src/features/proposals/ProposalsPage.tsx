@@ -1,6 +1,6 @@
 import type { ProposalStatus, ProposalSummary } from '@grant/shared';
 import { useQuery } from '@tanstack/react-query';
-import { FileText, Plus } from 'lucide-react';
+import { BadgeCheck, FileText, MessageSquare, Plus } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
@@ -38,6 +38,27 @@ function deadlineTone(days: number): string {
 
 function formatDue(due: Date): string {
   return due.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+/** Review state beside the title: open notes to deal with, or an owner's sign-off. */
+function ReviewMarks({ proposal }: { proposal: ProposalSummary }) {
+  if (!proposal.openComments && !proposal.approvedAt) return null;
+  return (
+    <span className="mt-1 flex items-center gap-3 text-[12px]">
+      {proposal.openComments ? (
+        <span className="tabular flex items-center gap-1 text-flag-amber">
+          <MessageSquare className="size-3.5" strokeWidth={1.8} />
+          {proposal.openComments} open note{proposal.openComments === 1 ? '' : 's'}
+        </span>
+      ) : null}
+      {proposal.approvedAt ? (
+        <span className="flex items-center gap-1 text-accent-700">
+          <BadgeCheck className="size-3.5" strokeWidth={1.8} />
+          Approved
+        </span>
+      ) : null}
+    </span>
+  );
 }
 
 /** Where a proposal stands: section progress while it is being written, otherwise its outcome. */
@@ -141,6 +162,7 @@ export function ProposalsPage() {
                           <div className="mt-0.5 truncate text-[12.5px] text-ink-400">
                             {proposal.funderName ?? proposal.templateName ?? 'No template'}
                           </div>
+                          <ReviewMarks proposal={proposal} />
                         </div>
                         <Badge tone={statusTones[proposal.status]}>
                           {statusLabels[proposal.status]}
@@ -197,6 +219,7 @@ export function ProposalsPage() {
                               .filter(Boolean)
                               .join(' · ') || 'No template'}
                           </div>
+                          <ReviewMarks proposal={proposal} />
                         </td>
                         <td className="w-44 px-3 py-3.5">
                           <ProgressCell proposal={proposal} />

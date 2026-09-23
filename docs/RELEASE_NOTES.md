@@ -24,6 +24,12 @@ A redesign of the interface, a working team feature, and production file storage
 - **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
 - **Change email address** from Settings, confirmed with the current password; the old address is notified
 
+**Review and sign-off (new)**
+- Review notes on a proposal or on one section, written by any member (viewers included), resolved rather than deleted
+- Open-note counts in the proposal header and the proposals list
+- Owners approve a proposal for submission; the header records who approved it and when
+- Any later edit withdraws the approval automatically, so it always refers to the text that was read
+
 **Activity trail (new)**
 - Every change in an organization is recorded: proposals, sections, templates, documents, library passages, deadlines, exports, profile and team
 - New Activity page grouped by day, with the author, the time and a link to the proposal

@@ -77,6 +77,8 @@ export class ProposalsService {
           take: 1,
           select: { dueAt: true },
         },
+        approvedBy: { select: { name: true } },
+        _count: { select: { comments: { where: { resolvedAt: null } } } },
       },
       orderBy: { updatedAt: 'desc' },
     });
@@ -92,6 +94,9 @@ export class ProposalsService {
       sectionCount: proposal.sections.length,
       completedSections: proposal.sections.filter((section) => section.wordCount > 0).length,
       nextDeadline: proposal.deadlines[0]?.dueAt.toISOString() ?? null,
+      approvedAt: proposal.approvedAt?.toISOString() ?? null,
+      approvedByName: proposal.approvedBy?.name ?? null,
+      openComments: proposal._count.comments,
       updatedAt: proposal.updatedAt.toISOString(),
     }));
   }
@@ -108,6 +113,8 @@ export class ProposalsService {
           take: 1,
           select: { dueAt: true },
         },
+        approvedBy: { select: { name: true } },
+        _count: { select: { comments: { where: { resolvedAt: null } } } },
       },
     });
     if (!proposal) throw new NotFoundException('Proposal not found');
@@ -137,6 +144,9 @@ export class ProposalsService {
       sectionCount: sections.length,
       completedSections: sections.filter((section) => section.wordCount > 0).length,
       nextDeadline: proposal.deadlines[0]?.dueAt.toISOString() ?? null,
+      approvedAt: proposal.approvedAt?.toISOString() ?? null,
+      approvedByName: proposal.approvedBy?.name ?? null,
+      openComments: proposal._count.comments,
       updatedAt: proposal.updatedAt.toISOString(),
       sections,
     };
@@ -156,6 +166,26 @@ export class ProposalsService {
         requestedAmount: input.requestedAmount,
         ...(input.status === 'SUBMITTED' ? { submittedAt: new Date() } : {}),
       },
+    });
+    return this.findOne(organizationId, proposalId);
+  }
+
+  /**
+   * An owner signs the proposal off for submission. Any later edit clears it (see
+   * touchProposal), so an approval always refers to the text that was read.
+   */
+  async setApproval(
+    organizationId: string,
+    proposalId: string,
+    userId: string,
+    approved: boolean,
+  ): Promise<ProposalDetail> {
+    await this.requireProposal(organizationId, proposalId);
+    await this.prisma.proposal.update({
+      where: { id: proposalId },
+      data: approved
+        ? { approvedAt: new Date(), approvedById: userId }
+        : { approvedAt: null, approvedById: null },
     });
     return this.findOne(organizationId, proposalId);
   }
@@ -352,10 +382,11 @@ export class ProposalsService {
     return Math.min(16000, Math.max(2000, Math.round(wordLimit * 4) + 2000));
   }
 
+  /** Editing withdraws an approval: the owner approved wording that no longer stands. */
   private async touchProposal(proposalId: string): Promise<void> {
     await this.prisma.proposal.update({
       where: { id: proposalId },
-      data: { updatedAt: new Date() },
+      data: { updatedAt: new Date(), approvedAt: null, approvedById: null },
     });
   }
 

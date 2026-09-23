@@ -114,6 +114,9 @@ model User {
   invitationsSent   Invitation[]
   documentsUploaded Document[]
   proposalsOwned    Proposal[]
+  proposalsApproved Proposal[]           @relation("ProposalApprover")
+  commentsWritten   ProposalComment[]    @relation("CommentAuthor")
+  commentsResolved  ProposalComment[]    @relation("CommentResolver")
   notifications     Notification[]
   aiGenerations     AiGeneration[]
   exports           Export[]
@@ -329,15 +332,20 @@ model Proposal {
   currency        String         @default("USD")
   fitScore        Int?
   submittedAt     DateTime?
+  /// Set when an owner approves the proposal for submission; cleared by any later edit.
+  approvedAt      DateTime?
+  approvedById    String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   template     FunderTemplate?   @relation(fields: [templateId], references: [id], onDelete: SetNull)
   owner        User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  approvedBy   User?             @relation("ProposalApprover", fields: [approvedById], references: [id], onDelete: SetNull)
   sections     ProposalSection[]
   deadlines    Deadline[]
   exports      Export[]
+  comments     ProposalComment[]
 
   @@index([organizationId, status])
   @@map("proposals")
@@ -358,9 +366,10 @@ model ProposalSection {
   status            SectionStatus @default(NOT_STARTED)
   updatedAt         DateTime      @updatedAt
 
-  proposal        Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
-  templateSection TemplateSection? @relation(fields: [templateSectionId], references: [id], onDelete: SetNull)
+  proposal        Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  templateSection TemplateSection?  @relation(fields: [templateSectionId], references: [id], onDelete: SetNull)
   versions        SectionVersion[]
+  comments        ProposalComment[]
 
   @@index([proposalId, order])
   @@map("proposal_sections")
@@ -525,4 +534,25 @@ model LibraryBlock {
 
   @@index([organizationId, category])
   @@map("library_blocks")
+}
+
+/// A reviewer's note on a proposal, or on one of its sections. Resolved rather than deleted,
+/// so the review history stays with the proposal.
+model ProposalComment {
+  id           String    @id @default(cuid())
+  proposalId   String
+  sectionId    String?
+  authorId     String?
+  body         String
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime  @default(now())
+
+  proposal   Proposal         @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  section    ProposalSection? @relation(fields: [sectionId], references: [id], onDelete: Cascade)
+  author     User?            @relation("CommentAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  resolvedBy User?            @relation("CommentResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+
+  @@index([proposalId, resolvedAt])
+  @@map("proposal_comments")
 }

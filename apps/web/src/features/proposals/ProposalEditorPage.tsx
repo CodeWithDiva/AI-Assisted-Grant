@@ -1,7 +1,13 @@
-import { countWords, ProposalStatus, RefineAction, type ProposalSectionView } from '@grant/shared';
+import {
+  countWords,
+  OrgRole,
+  ProposalStatus,
+  RefineAction,
+  type ProposalSectionView,
+} from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { BookMarked, ChevronDown, ClipboardCheck } from 'lucide-react';
+import { BadgeCheck, BookMarked, ChevronDown, ClipboardCheck, MessageSquare } from 'lucide-react';
 import { useParams } from 'react-router';
 import {
   Alert,
@@ -21,6 +27,7 @@ import { proposalsApi } from './api';
 import { CompliancePanel } from './CompliancePanel';
 import { ExportButtons } from './ExportButtons';
 import { applyFormat, FormattingToolbar, RichPreview } from './Formatting';
+import { ReviewNotes } from './ReviewNotes';
 import { statusLabels, statusTones } from './status';
 import { VersionHistory } from './VersionHistory';
 
@@ -47,6 +54,7 @@ export function ProposalEditorPage() {
   const [preview, setPreview] = useState(false);
   const dirty = useRef(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [showNotes, setShowNotes] = useState(false);
   // The selection when the library opened: what "save to library" stores.
   const [librarySource, setLibrarySource] = useState<{
     text: string;
@@ -68,15 +76,19 @@ export function ProposalEditorPage() {
     if (!dirty.current && !streaming) setText(selected.text);
   }, [selected, streaming]);
 
+  /** Editing also withdraws the owner's approval on the server, so the header follows. */
   const applySection = (section: ProposalSectionView) => {
     queryClient.setQueryData(['proposals', orgId, proposalId], (old: typeof proposal.data) =>
       old
         ? {
             ...old,
+            approvedAt: null,
+            approvedByName: null,
             sections: old.sections.map((item) => (item.id === section.id ? section : item)),
           }
         : old,
     );
+    void queryClient.invalidateQueries({ queryKey: ['proposals', orgId] });
   };
 
   const openSection = (section: ProposalSectionView) => {
@@ -156,6 +168,14 @@ export function ProposalEditorPage() {
     onSettled: () => setStreaming(false),
   });
 
+  const approval = useMutation({
+    mutationFn: (approved: boolean) => proposalsApi.setApproval(orgId, proposalId, approved),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['proposals', orgId] });
+      await proposal.refetch();
+    },
+  });
+
   const setStatus = useMutation({
     mutationFn: (status: ProposalStatus) => proposalsApi.update(orgId, proposalId, { status }),
     onSuccess: async () => {
@@ -218,6 +238,18 @@ export function ProposalEditorPage() {
           <ExportButtons orgId={orgId} proposalId={proposalId} />
         </div>
       </header>
+
+      <ApprovalBar
+        approvedAt={data.approvedAt}
+        approvedByName={data.approvedByName}
+        openComments={data.openComments}
+        isOwner={activeOrg.role === OrgRole.OWNER}
+        pending={approval.isPending}
+        error={approval.error?.message}
+        onApprove={() => approval.mutate(true)}
+        onWithdraw={() => approval.mutate(false)}
+        onShowNotes={() => setShowNotes(true)}
+      />
 
       {showCompliance ? (
         <CompliancePanel
@@ -355,32 +387,62 @@ export function ProposalEditorPage() {
                 setText(value);
               }}
               extra={
-                <button
-                  type="button"
-                  disabled={busy || preview}
-                  aria-expanded={librarySource !== null}
-                  onMouseDown={(event) => event.preventDefault()}
-                  onClick={() => {
-                    if (librarySource) return setLibrarySource(null);
-                    const area = textareaRef.current;
-                    const picked = area ? text.slice(area.selectionStart, area.selectionEnd) : '';
-                    setLibrarySource(
-                      picked.trim()
-                        ? { text: picked, isSelection: true }
-                        : { text, isSelection: false },
-                    );
-                  }}
-                  className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] disabled:opacity-40 ${
-                    librarySource
-                      ? 'bg-accent-50 text-accent-700'
-                      : 'text-ink-600 hover:bg-paper-dark hover:text-ink-900'
-                  }`}
-                >
-                  <BookMarked className="size-4" />
-                  Library
-                </button>
+                <>
+                  <button
+                    type="button"
+                    disabled={busy || preview}
+                    onClick={() => setShowNotes((value) => !value)}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] disabled:opacity-40 ${
+                      showNotes
+                        ? 'bg-accent-50 text-accent-700'
+                        : 'text-ink-600 hover:bg-paper-dark hover:text-ink-900'
+                    }`}
+                  >
+                    <MessageSquare className="size-4" />
+                    Notes
+                    {data.openComments ? (
+                      <span className="tabular rounded-full bg-brass-soft px-1.5 font-mono text-[11px] text-[#7a5a1f]">
+                        {data.openComments}
+                      </span>
+                    ) : null}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={busy || preview}
+                    aria-expanded={librarySource !== null}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      if (librarySource) return setLibrarySource(null);
+                      const area = textareaRef.current;
+                      const picked = area ? text.slice(area.selectionStart, area.selectionEnd) : '';
+                      setLibrarySource(
+                        picked.trim()
+                          ? { text: picked, isSelection: true }
+                          : { text, isSelection: false },
+                      );
+                    }}
+                    className={`inline-flex h-8 items-center gap-1.5 rounded-md px-2.5 text-[13px] disabled:opacity-40 ${
+                      librarySource
+                        ? 'bg-accent-50 text-accent-700'
+                        : 'text-ink-600 hover:bg-paper-dark hover:text-ink-900'
+                    }`}
+                  >
+                    <BookMarked className="size-4" />
+                    Library
+                  </button>
+                </>
               }
             />
+
+            {showNotes && !preview ? (
+              <ReviewNotes
+                orgId={orgId}
+                proposalId={proposalId}
+                sectionId={selected.id}
+                sectionTitle={selected.title}
+                onClose={() => setShowNotes(false)}
+              />
+            ) : null}
 
             {librarySource && !preview ? (
               <LibraryPanel
@@ -495,6 +557,83 @@ export function ProposalEditorPage() {
           <p className="text-ink-400">This proposal has no sections.</p>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Sign-off before a proposal leaves the building: only an owner approves, and any later
+ * edit clears the approval, so it always refers to the text that was read.
+ */
+function ApprovalBar({
+  approvedAt,
+  approvedByName,
+  openComments,
+  isOwner,
+  pending,
+  error,
+  onApprove,
+  onWithdraw,
+  onShowNotes,
+}: {
+  approvedAt: string | null;
+  approvedByName: string | null;
+  openComments: number;
+  isOwner: boolean;
+  pending: boolean;
+  error?: string;
+  onApprove: () => void;
+  onWithdraw: () => void;
+  onShowNotes: () => void;
+}) {
+  const approvedOn = approvedAt
+    ? new Date(approvedAt).toLocaleDateString(undefined, {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })
+    : null;
+
+  return (
+    <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-line bg-surface px-4 py-3">
+      {approvedAt ? (
+        <span className="flex items-center gap-2 text-[13.5px] text-ink-800">
+          <BadgeCheck className="size-[18px] text-accent-600" strokeWidth={1.8} />
+          Approved for submission by{' '}
+          <span className="font-medium text-ink-900">{approvedByName ?? 'an owner'}</span> on{' '}
+          {approvedOn}
+        </span>
+      ) : (
+        <span className="text-[13.5px] text-ink-600">
+          Not yet approved for submission.
+          {isOwner ? ' Read it through, then sign it off.' : ' An owner signs it off.'}
+        </span>
+      )}
+
+      {openComments ? (
+        <button
+          type="button"
+          onClick={onShowNotes}
+          className="text-[13px] font-medium text-accent-600 hover:underline"
+        >
+          {openComments} open review note{openComments === 1 ? '' : 's'}
+        </button>
+      ) : null}
+
+      {isOwner ? (
+        <span className="ml-auto flex items-center gap-2">
+          {error ? <span className="text-[12.5px] text-flag-red">{error}</span> : null}
+          {approvedAt ? (
+            <Button size="sm" onClick={onWithdraw} disabled={pending}>
+              Withdraw approval
+            </Button>
+          ) : (
+            <Button size="sm" variant="primary" onClick={onApprove} disabled={pending}>
+              {pending ? 'Saving…' : 'Approve for submission'}
+            </Button>
+          )}
+        </span>
+      ) : null}
     </div>
   );
 }

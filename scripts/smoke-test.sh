@@ -135,8 +135,31 @@ curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/library/$BLOCK/used" > /dev/null || 
 [ "$(curl -sf -b "$INVITEE_JAR" "$BASE/orgs/$ORG/library" | json '[0].usageCount')" = "1" ]   || fail "a viewer could not read the library"
 [ "$(curl -s -o /dev/null -w '%{http_code}' -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/library"   -H 'Content-Type: application/json' -d '{"title":"Nope","body":"x"}')" = "403" ]   || fail "a viewer was allowed to add to the library"
 curl -sf -b "$JAR" -X DELETE "$BASE/orgs/$ORG/library/$BLOCK" > /dev/null || fail "library passage not deleted"
-rm -f "$INVITEE_JAR"
 pass "content library: add, edit, count use, viewer reads only, delete"
+
+# --- review notes and approval --------------------------------------------
+NOTE=$(curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/proposals/$PROP/comments" -H 'Content-Type: application/json' \
+  -d "{\"sectionId\":\"$SEC\",\"body\":\"Add the 2025 figure here.\"}" | json .id)
+[ -n "$NOTE" ] || fail "review note not created"
+[ "$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/proposals" | json '.find(p=>p.id==="'"$PROP"'").openComments')" = "1" ] \
+  || fail "open note not counted"
+# A viewer may review but not sign off.
+curl -sf -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/proposals/$PROP/comments" -H 'Content-Type: application/json' \
+  -d '{"body":"A viewer note."}' > /dev/null || fail "a viewer could not leave a note"
+[ "$(curl -s -o /dev/null -w '%{http_code}' -b "$INVITEE_JAR" -X POST "$BASE/orgs/$ORG/proposals/$PROP/approval")" = "403" ] \
+  || fail "a viewer was allowed to approve"
+
+curl -sf -b "$JAR" -X POST "$BASE/orgs/$ORG/proposals/$PROP/approval" | grep -q '"approvedAt":"' \
+  || fail "proposal not approved"
+# Editing withdraws the approval.
+curl -sf -b "$JAR" -X PATCH "$BASE/orgs/$ORG/proposals/$PROP/sections/$SEC" -H 'Content-Type: application/json' \
+  -d '{"text":"Edited after the approval."}' > /dev/null
+curl -sf -b "$JAR" "$BASE/orgs/$ORG/proposals/$PROP" | grep -q '"approvedAt":null' \
+  || fail "editing did not withdraw the approval"
+curl -sf -b "$JAR" -X PATCH "$BASE/orgs/$ORG/proposals/$PROP/comments/$NOTE" -H 'Content-Type: application/json' \
+  -d '{"resolved":true}' | grep -q '"resolvedAt":"' || fail "note not resolved"
+rm -f "$INVITEE_JAR"
+pass "review notes, viewer limits and owner approval"
 
 # --- activity trail -------------------------------------------------------
 ACTIVITY=$(curl -sf -b "$JAR" "$BASE/orgs/$ORG/activity")

@@ -11,26 +11,33 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import {
+  createCommentSchema,
   createProposalSchema,
   generateSectionSchema,
+  resolveCommentSchema,
   refineSectionSchema,
   updateProposalSchema,
   updateSectionSchema,
   OrgRole,
   type AuthUser,
+  type CreateCommentInput,
   type CreateProposalInput,
+  type OrgRole as OrgRoleValue,
   type GenerateSectionInput,
   type RefineSectionInput,
+  type ResolveCommentInput,
   type UpdateProposalInput,
   type UpdateSectionInput,
 } from '@grant/shared';
 import type { Response } from 'express';
 import { Throttle } from '@nestjs/throttler';
+import { CurrentMembership } from '../../common/decorators/current-membership.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { OrgMemberGuard } from '../../common/guards/org-member.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { ComplianceService } from './compliance.service';
+import { CommentsService } from './comments.service';
 import { ProposalsService } from './proposals.service';
 
 @Throttle({ default: { ttl: 3_600_000, limit: 120 } })
@@ -40,6 +47,7 @@ export class ProposalsController {
   constructor(
     private readonly proposals: ProposalsService,
     private readonly compliance: ComplianceService,
+    private readonly comments: CommentsService,
   ) {}
 
   @Get()
@@ -191,6 +199,66 @@ export class ProposalsController {
     @Param('versionId') versionId: string,
   ) {
     return this.proposals.restoreVersion(orgId, proposalId, sectionId, versionId);
+  }
+
+  /** Any member may leave review notes, including viewers: reviewing is their job. */
+  @Get(':proposalId/comments')
+  listComments(@Param('orgId') orgId: string, @Param('proposalId') proposalId: string) {
+    return this.comments.list(orgId, proposalId);
+  }
+
+  @Post(':proposalId/comments')
+  addComment(
+    @Param('orgId') orgId: string,
+    @Param('proposalId') proposalId: string,
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(createCommentSchema)) body: CreateCommentInput,
+  ) {
+    return this.comments.create(orgId, proposalId, user.id, body);
+  }
+
+  @Patch(':proposalId/comments/:commentId')
+  resolveComment(
+    @Param('orgId') orgId: string,
+    @Param('proposalId') proposalId: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(resolveCommentSchema)) body: ResolveCommentInput,
+  ) {
+    return this.comments.setResolved(orgId, proposalId, commentId, user.id, body.resolved);
+  }
+
+  @Delete(':proposalId/comments/:commentId')
+  @HttpCode(204)
+  deleteComment(
+    @Param('orgId') orgId: string,
+    @Param('proposalId') proposalId: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() user: AuthUser,
+    @CurrentMembership() membership: { role: OrgRoleValue },
+  ) {
+    return this.comments.remove(orgId, proposalId, commentId, user.id, membership.role);
+  }
+
+  /** Only an owner signs a proposal off for submission. */
+  @Post(':proposalId/approval')
+  @Roles(OrgRole.OWNER)
+  approve(
+    @Param('orgId') orgId: string,
+    @Param('proposalId') proposalId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.proposals.setApproval(orgId, proposalId, user.id, true);
+  }
+
+  @Delete(':proposalId/approval')
+  @Roles(OrgRole.OWNER)
+  withdrawApproval(
+    @Param('orgId') orgId: string,
+    @Param('proposalId') proposalId: string,
+    @CurrentUser() user: AuthUser,
+  ) {
+    return this.proposals.setApproval(orgId, proposalId, user.id, false);
   }
 }
 
