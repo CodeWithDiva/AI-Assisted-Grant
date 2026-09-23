@@ -40,6 +40,12 @@ This builds on the original 15-day plan by Mahnoor Gulzar. It lists the gaps in 
 - Deploy workflow (Render + Vercel after CI passes), `render.yaml`, and `scripts/ai-check.mjs` for the live AI check
 - Free-plan setup: Gemini/Groq/Ollama AI providers, files in the database, Brevo email, reminders from GitHub Actions, Vercel `/api` proxy (`docs/FREE_HOSTING.md`)
 
+### Added after the free-plan work
+
+- **Content library**: reusable approved passages per organization, inserted while writing and used by the AI as source material (`/orgs/:orgId/library`, sidebar → Content library)
+- Password reset by email and changing the sign-in address from Settings
+- Interface pass for phones: no page scrolls sideways, proposals become cards, skeleton loading, drag-and-drop uploads
+
 ### Still needed from the client before launch
 
 - An AI key: a free Gemini key is enough to start (Anthropic later if wanted), then run `node scripts/ai-check.mjs`

@@ -51,6 +51,18 @@ Base URL: `http://localhost:4000/api/v1` (development).
 | POST | `/orgs/:orgId/documents` | OWNER, EDITOR | `multipart/form-data`: `file` + `kind` (`PAST_PROPOSAL`, `REPORT`, `RFP`, `OTHER`). PDF, DOCX, TXT, MD up to 20 MB. Text is extracted on upload. |
 | DELETE | `/orgs/:orgId/documents/:documentId` | OWNER, EDITOR | `204`. |
 
+## Content library
+
+Reusable passages (history, team, methods, policies) that writers insert into sections and the AI treats as organization facts.
+
+| Method | Path | Role | Notes |
+|--------|------|------|-------|
+| GET | `/orgs/:orgId/library` | member | Ordered by category, then title. |
+| POST | `/orgs/:orgId/library` | OWNER, EDITOR | `{ title, body, category }`. Categories: `ORGANIZATION`, `PROGRAMS`, `IMPACT`, `TEAM`, `FINANCE`, `POLICIES`, `OTHER`. |
+| PATCH | `/orgs/:orgId/library/:blockId` | OWNER, EDITOR | Any field. |
+| DELETE | `/orgs/:orgId/library/:blockId` | OWNER, EDITOR | `204`. |
+| POST | `/orgs/:orgId/library/:blockId/used` | OWNER, EDITOR | Counts one insertion; the most-used passages are the ones the AI sees first. `204`. |
+
 ## Funder templates
 
 | Method | Path | Role | Notes |

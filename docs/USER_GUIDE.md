@@ -47,6 +47,16 @@ The ring on the right shows how complete the profile is. Anything left out appea
 - **Starter library** — four common formats (foundation grant, letter of inquiry, startup innovation grant, government grant).
 - **Import from RFP** — upload the funder's guidelines. The AI reads out the sections, word limits, eligibility rules and scoring criteria. **Check what it found**, fix anything wrong — especially the word limits — then save.
 
+## 4b. Build your content library
+
+**Content library** (sidebar, under Library) holds the paragraphs you write again and again: organization history, the team, your monitoring approach, safeguarding and financial policies.
+
+- **New passage** — give it a title, pick a category and paste the text.
+- In the editor, the **Library** button inserts a passage where the cursor is, and saves the section (or just the text you selected) as a new passage.
+- The AI reads the library too, so drafts reuse your approved wording and figures instead of rephrasing them differently in every application.
+
+Keep passages short and factual, and update them when the numbers change — every later draft picks up the new version.
+
 ## 5. Write the proposal
 
 **New proposal** (top-right button, available everywhere): give it a title and an amount, and pick the template card. The template's sections are copied onto the proposal, so later template changes leave it alone.
@@ -56,6 +66,7 @@ In the editor:
 - The left column lists every section with its word count. Grey dot = not started, green = written, red = over the limit.
 - **Write with AI** drafts the selected section from your profile, documents and the funder's instructions; the text appears as it is written.
 - **Shorten**, **Expand**, **More formal**, **Plainer** rewrite what is there. The instruction box passes a specific request, e.g. *"lead with the 2026 flood response"*.
+- **Library** inserts an approved passage at the cursor, or saves what you have written for reuse.
 - The toolbar above the text adds **bold** (Ctrl+B), *italics* (Ctrl+I), bulleted and numbered lists. **Preview** shows the section as it will look in the export, and the formatting carries into Word and PDF. Word counts ignore the formatting marks.
 - The bar under the text fills as you approach the word limit and turns red past it.
 - Edits save two seconds after you stop typing. **History** restores any earlier version, yours or the AI's.

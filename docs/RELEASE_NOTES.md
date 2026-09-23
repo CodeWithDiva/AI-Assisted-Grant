@@ -24,6 +24,12 @@ A redesign of the interface, a working team feature, and production file storage
 - **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
 - **Change email address** from Settings, confirmed with the current password; the old address is notified
 
+**Content library (new)**
+- A library of approved, reusable passages per organization: history, programs, impact, team, finance, policies
+- Insert a passage into any section from the editor's **Library** button, or save the section (or the selected text) as a new passage
+- The AI drafts from the library as well as the profile and documents, so applications reuse your own wording; the most-used passages come first
+- Search, category filters, copy, edit and a use counter; viewers can read the library but not change it
+
 **Writing**
 - Formatting toolbar in the editor: bold, italics, bulleted and numbered lists, with Ctrl+B / Ctrl+I and a preview
 - Formatting is kept in the Word and PDF exports (real bold, italics and lists; numbering restarts per list)

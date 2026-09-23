@@ -17,6 +17,7 @@ Drafts grant proposals against funder templates and tracks application deadlines
 - **Funder templates** — a starter library, or import an RFP and let the AI read out its sections, word limits, eligibility and scoring criteria
 - **AI drafting** — section-by-section drafts from your own facts, streamed live, with shorten/expand/tone rewrites and full version history
 - **Formatting** — bold, italics, bulleted and numbered lists, carried into the Word and PDF exports
+- **Content library** — approved passages (history, team, policies) inserted while writing and reused by the AI
 - **Review** — instant limit and placeholder checks, plus an AI score against the funder's criteria and a 0-100 funder-fit score
 - **Deadlines** — reminders by email 14/7/3/1 days before, calendar export, status pipeline
 - **Export** — DOCX and PDF in the funder's section order
