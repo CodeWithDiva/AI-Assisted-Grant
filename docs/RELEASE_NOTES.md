@@ -24,6 +24,10 @@ A redesign of the interface, a working team feature, and production file storage
 - **Forgot password**: a one-time emailed link (60 minutes) to choose a new password; it never reveals whether an address has an account
 - **Change email address** from Settings, confirmed with the current password; the old address is notified
 
+**Identity**
+- New product mark: a compass needle, north in brass, on the dark shell — in the sidebar, on the sign-in screens and in emails
+- Real favicon plus installable icons (`apple-touch-icon.png`, 192 and 512 px) and a web manifest, so the app can be added to a phone's home screen; `pnpm icons` redraws them from the same mark
+
 **Content library (new)**
 - A library of approved, reusable passages per organization: history, programs, impact, team, finance, policies
 - Insert a passage into any section from the editor's **Library** button, or save the section (or the selected text) as a new passage

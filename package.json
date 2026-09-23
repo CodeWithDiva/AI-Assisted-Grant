@@ -17,7 +17,8 @@
     "db:studio": "pnpm --filter @grant/api db:studio",
     "db:seed": "pnpm --filter @grant/api db:seed",
     "test": "pnpm -r test",
-    "e2e": "pnpm --filter @grant/e2e e2e"
+    "e2e": "pnpm --filter @grant/e2e e2e",
+    "icons": "pnpm --filter @grant/e2e icons"
   },
   "devDependencies": {
     "prettier": "^3.9.6",

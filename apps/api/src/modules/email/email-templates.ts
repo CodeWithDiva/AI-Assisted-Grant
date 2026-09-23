@@ -19,6 +19,7 @@ const COLORS = {
   line: '#e6e0d4',
   accent: '#1a6b50',
   amber: '#8f5e00',
+  brass: '#c79a45',
   red: '#a3243a',
 };
 
@@ -47,7 +48,10 @@ function layout(options: { preheader: string; body: string; footer: string }): s
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
         <tr>
           <td style="background:${COLORS.night};border-radius:10px 10px 0 0;padding:18px 28px;">
-            <span style="display:inline-block;width:10px;height:10px;background:#ffffff;transform:rotate(45deg);margin-right:10px;vertical-align:middle;"></span>
+            <table role="presentation" cellpadding="0" cellspacing="0" style="display:inline-block;margin-right:10px;vertical-align:middle;">
+              <tr><td style="font-size:0;line-height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:7px solid ${COLORS.brass};"></td></tr>
+              <tr><td style="font-size:0;line-height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:7px solid #ffffff;"></td></tr>
+            </table>
             <span style="font-family:Georgia,'Times New Roman',serif;font-size:19px;color:#ffffff;vertical-align:middle;">GrantPilot</span>
           </td>
         </tr>
