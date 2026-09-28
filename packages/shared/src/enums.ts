@@ -14,6 +14,17 @@ export const OrgRole = {
 } as const;
 export type OrgRole = (typeof OrgRole)[keyof typeof OrgRole];
 
+export const LibraryCategory = {
+  ORGANIZATION: 'ORGANIZATION',
+  PROGRAMS: 'PROGRAMS',
+  IMPACT: 'IMPACT',
+  TEAM: 'TEAM',
+  FINANCE: 'FINANCE',
+  POLICIES: 'POLICIES',
+  OTHER: 'OTHER',
+} as const;
+export type LibraryCategory = (typeof LibraryCategory)[keyof typeof LibraryCategory];
+
 export const DocumentKind = {
   PAST_PROPOSAL: 'PAST_PROPOSAL',
   REPORT: 'REPORT',

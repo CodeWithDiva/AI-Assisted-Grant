@@ -1,4 +1,5 @@
 import { Navigate, Outlet, useLocation } from 'react-router';
+import { Wordmark } from '../../app/Wordmark';
 import { useAuth } from './AuthProvider';
 
 export function RequireAuth() {
@@ -6,7 +7,13 @@ export function RequireAuth() {
   const location = useLocation();
 
   if (isLoading) {
-    return <div className="p-8 text-slate-500">Loading…</div>;
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-pulse opacity-60">
+          <Wordmark />
+        </div>
+      </div>
+    );
   }
 
   if (!user) {

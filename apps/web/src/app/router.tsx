@@ -1,34 +1,155 @@
-import { createBrowserRouter } from 'react-router';
+import { lazy, type ComponentType } from 'react';
+import { createBrowserRouter, Navigate } from 'react-router';
 import { AuthProvider } from '../features/auth/AuthProvider';
 import { LoginPage } from '../features/auth/LoginPage';
 import { RegisterPage } from '../features/auth/RegisterPage';
 import { RequireAuth } from '../features/auth/RequireAuth';
-import { DashboardPage } from '../features/dashboard/DashboardPage';
-import { OrganizationDetailPage } from '../features/organizations/OrganizationDetailPage';
-import { OrganizationsPage } from '../features/organizations/OrganizationsPage';
+import { OrgProvider } from '../features/organizations/OrgProvider';
 import { AppLayout } from './AppLayout';
 import { ComingSoonPage } from './ComingSoonPage';
+import { RouteError } from './RouteError';
+
+/** Each page is its own chunk, so the first load only downloads what it shows. */
+function page(loader: () => Promise<Record<string, unknown>>, name: string) {
+  const Component = lazy(async () => ({ default: (await loader())[name] as ComponentType }));
+  return <Component />;
+}
 
 export const router = createBrowserRouter([
   {
     element: <AuthProvider />,
+    errorElement: <RouteError />,
     children: [
       { path: '/login', element: <LoginPage /> },
       { path: '/register', element: <RegisterPage /> },
       {
+        path: '/forgot-password',
+        element: page(() => import('../features/auth/ForgotPasswordPage'), 'ForgotPasswordPage'),
+      },
+      {
+        path: '/reset-password/:token',
+        element: page(() => import('../features/auth/ResetPasswordPage'), 'ResetPasswordPage'),
+      },
+      {
+        path: '/invite/:token',
+        element: page(() => import('../features/team/AcceptInvitePage'), 'AcceptInvitePage'),
+      },
+      {
         element: <RequireAuth />,
         children: [
           {
-            path: '/',
-            element: <AppLayout />,
+            element: <OrgProvider />,
             children: [
-              { index: true, element: <DashboardPage /> },
-              { path: 'proposals', element: <ComingSoonPage title="Proposals" day={7} /> },
-              { path: 'templates', element: <ComingSoonPage title="Funder Templates" day={6} /> },
-              { path: 'deadlines', element: <ComingSoonPage title="Deadlines" day={9} /> },
-              { path: 'organization', element: <OrganizationsPage /> },
-              { path: 'organization/:orgId', element: <OrganizationDetailPage /> },
-              { path: '*', element: <ComingSoonPage title="Page not found" /> },
+              {
+                path: '/',
+                element: <AppLayout />,
+                children: [
+                  {
+                    errorElement: <RouteError />,
+                    children: [
+                      {
+                        index: true,
+                        element: page(
+                          () => import('../features/dashboard/DashboardPage'),
+                          'DashboardPage',
+                        ),
+                      },
+                      {
+                        path: 'proposals',
+                        element: page(
+                          () => import('../features/proposals/ProposalsPage'),
+                          'ProposalsPage',
+                        ),
+                      },
+                      {
+                        path: 'proposals/new',
+                        element: page(
+                          () => import('../features/proposals/NewProposalPage'),
+                          'NewProposalPage',
+                        ),
+                      },
+                      {
+                        path: 'proposals/:proposalId',
+                        element: page(
+                          () => import('../features/proposals/ProposalEditorPage'),
+                          'ProposalEditorPage',
+                        ),
+                      },
+                      {
+                        path: 'deadlines',
+                        element: page(
+                          () => import('../features/deadlines/DeadlinesPage'),
+                          'DeadlinesPage',
+                        ),
+                      },
+                      {
+                        path: 'templates',
+                        element: page(
+                          () => import('../features/templates/TemplatesPage'),
+                          'TemplatesPage',
+                        ),
+                      },
+                      {
+                        path: 'templates/:templateId',
+                        element: page(
+                          () => import('../features/templates/TemplateDetailPage'),
+                          'TemplateDetailPage',
+                        ),
+                      },
+                      {
+                        path: 'library',
+                        element: page(
+                          () => import('../features/library/LibraryPage'),
+                          'LibraryPage',
+                        ),
+                      },
+                      {
+                        path: 'documents',
+                        element: page(
+                          () => import('../features/documents/DocumentsPage'),
+                          'DocumentsPage',
+                        ),
+                      },
+                      {
+                        path: 'profile',
+                        element: page(
+                          () => import('../features/profile/ProfilePage'),
+                          'ProfilePage',
+                        ),
+                      },
+                      {
+                        path: 'activity',
+                        element: page(
+                          () => import('../features/activity/ActivityPage'),
+                          'ActivityPage',
+                        ),
+                      },
+                      {
+                        path: 'team',
+                        element: page(() => import('../features/team/TeamPage'), 'TeamPage'),
+                      },
+                      {
+                        path: 'settings',
+                        element: page(
+                          () => import('../features/settings/SettingsPage'),
+                          'SettingsPage',
+                        ),
+                      },
+                      {
+                        path: 'organizations',
+                        element: page(
+                          () => import('../features/organizations/OrganizationsPage'),
+                          'OrganizationsPage',
+                        ),
+                      },
+                      // Addresses used by earlier versions of the app.
+                      { path: 'organization', element: <Navigate to="/organizations" replace /> },
+                      { path: 'organization/:orgId', element: <Navigate to="/profile" replace /> },
+                      { path: '*', element: <ComingSoonPage title="Page not found" /> },
+                    ],
+                  },
+                ],
+              },
             ],
           },
         ],

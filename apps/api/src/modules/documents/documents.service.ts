@@ -34,7 +34,12 @@ export class DocumentsService {
       throw new BadRequestException('Only PDF, Word (.docx), text and Markdown files are accepted');
     }
 
-    const fileKey = await this.storage.save(organizationId, file.originalname, file.buffer);
+    const fileKey = await this.storage.save(
+      organizationId,
+      file.originalname,
+      file.buffer,
+      file.mimetype,
+    );
     const document = await this.prisma.document.create({
       data: {
         organizationId,

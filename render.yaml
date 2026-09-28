@@ -1,0 +1,49 @@
+# Render Blueprint for the API (Render → New → Blueprint → pick this repo).
+# Set up for Render's free plan: files are stored in the database, AI uses Gemini's free
+# tier and email goes through Brevo's free plan. See docs/FREE_HOSTING.md.
+# Values marked `sync: false` are asked for once when the Blueprint is created.
+services:
+  - type: web
+    name: grantpilot-api
+    runtime: docker
+    dockerfilePath: infra/docker/api.Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/v1/health
+    # Deploys are triggered by .github/workflows/deploy.yml after CI passes.
+    autoDeployTrigger: 'off'
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '4000'
+      - key: WEB_ORIGIN
+        sync: false
+      # The web app reaches the API through Vercel's /api proxy, then Render's own proxy.
+      - key: TRUST_PROXY_HOPS
+        value: '2'
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: AI_PROVIDER
+        value: gemini
+      - key: AI_API_KEY
+        sync: false
+      - key: STORAGE_DRIVER
+        value: database
+      - key: MAX_UPLOAD_MB
+        value: '10'
+      - key: EMAIL_DRIVER
+        value: brevo
+      - key: BREVO_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: CRON_SECRET
+        generateValue: true
+      - key: SENTRY_DSN
+        sync: false

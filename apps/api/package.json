@@ -1,6 +1,6 @@
 {
   "name": "@grant/api",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "build": "nest build",
@@ -11,22 +11,30 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "prisma db seed"
+    "db:seed": "prisma db seed",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
+    "@aws-sdk/client-s3": "^3.1132.0",
     "@grant/shared": "workspace:*",
     "@nestjs/common": "^12.0.1",
     "@nestjs/config": "^12.0.0",
     "@nestjs/core": "^12.0.1",
     "@nestjs/jwt": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
+    "@nestjs/schedule": "^12.0.2",
+    "@nestjs/throttler": "^6.5.0",
     "@prisma/adapter-pg": "7.10.0",
     "@prisma/client": "^7.10.0",
+    "@sentry/node": "10.74.0",
     "bcryptjs": "^3.0.3",
     "cookie-parser": "^1.4.7",
+    "docx": "^9.7.1",
     "helmet": "^8.3.0",
     "mammoth": "^1.12.3",
+    "pdfkit": "^0.20.2",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "unpdf": "^1.8.1",
@@ -38,9 +46,11 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^22.20.2",
+    "@types/pdfkit": "^0.17.6",
     "dotenv": "^17.4.2",
     "prisma": "7.10.0",
     "tsx": "^4.23.13",
-    "typescript": "~5.9.3"
+    "typescript": "~5.9.3",
+    "vitest": "^5.0.1"
   }
 }

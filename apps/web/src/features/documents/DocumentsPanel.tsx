@@ -1,27 +1,46 @@
 import { DocumentKind, type OrgDocument } from '@grant/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
-import { FormError } from '../../components/form';
+import { FileText } from 'lucide-react';
+import { useState } from 'react';
+import {
+  Alert,
+  Badge,
+  EmptyState,
+  FileDrop,
+  SectionLabel,
+  Select,
+  Skeleton,
+} from '../../components/ui';
 import { documentsApi } from './api';
+import { usePermissions } from '../organizations/permissions';
 
 const kindLabels: Record<DocumentKind, string> = {
   PAST_PROPOSAL: 'Past proposal',
   REPORT: 'Report',
-  RFP: 'Funder guidelines / RFP',
+  RFP: 'Funder guidelines',
   OTHER: 'Other',
 };
 
-const statusStyles: Record<OrgDocument['status'], string> = {
-  PENDING: 'bg-slate-100 text-slate-600',
-  PROCESSING: 'bg-amber-50 text-amber-700',
-  READY: 'bg-emerald-50 text-emerald-700',
-  FAILED: 'bg-red-50 text-red-700',
+const statusLabels: Record<OrgDocument['status'], string> = {
+  PENDING: 'Waiting',
+  PROCESSING: 'Reading',
+  READY: 'Ready',
+  FAILED: 'Could not read',
+};
+
+const statusTones: Record<OrgDocument['status'], 'neutral' | 'amber' | 'green' | 'red'> = {
+  PENDING: 'neutral',
+  PROCESSING: 'amber',
+  READY: 'green',
+  FAILED: 'red',
 };
 
 export function DocumentsPanel({ orgId }: { orgId: string }) {
   const queryClient = useQueryClient();
-  const fileInput = useRef<HTMLInputElement>(null);
+  const { canWrite } = usePermissions();
   const [kind, setKind] = useState<DocumentKind>(DocumentKind.PAST_PROPOSAL);
+  // Deleting is two clicks: the first asks, the second deletes.
+  const [confirming, setConfirming] = useState<string | null>(null);
 
   const documents = useQuery({
     queryKey: ['documents', orgId],
@@ -32,88 +51,109 @@ export function DocumentsPanel({ orgId }: { orgId: string }) {
 
   const upload = useMutation({
     mutationFn: (file: File) => documentsApi.upload(orgId, file, kind),
-    onSuccess: async () => {
-      if (fileInput.current) fileInput.current.value = '';
-      await refresh();
-    },
+    onSuccess: refresh,
   });
 
   const remove = useMutation({
     mutationFn: (documentId: string) => documentsApi.remove(orgId, documentId),
-    onSuccess: refresh,
+    onSuccess: async () => {
+      setConfirming(null);
+      await refresh();
+    },
   });
 
   return (
-    <div className="space-y-4">
-      <p className="text-sm text-slate-600">
-        Upload past proposals, annual reports and funder guidelines (PDF, Word, text — up to 20 MB).
-        The text is read out of each file so the AI can reuse your own wording.
-      </p>
+    <div className="space-y-6">
+      <Alert>{upload.error?.message ?? remove.error?.message}</Alert>
 
-      <FormError message={upload.error?.message ?? remove.error?.message} />
-
-      <div className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-4">
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">Document type</span>
-          <select
-            value={kind}
-            onChange={(event) => setKind(event.target.value as DocumentKind)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-brand-500"
-          >
-            {Object.values(DocumentKind).map((value) => (
-              <option key={value} value={value}>
-                {kindLabels[value]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-medium text-slate-700">File</span>
-          <input
-            ref={fileInput}
-            type="file"
-            accept=".pdf,.docx,.txt,.md"
-            disabled={upload.isPending}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) upload.mutate(file);
-            }}
-            className="block text-sm file:mr-3 file:rounded-md file:border-0 file:bg-brand-600 file:px-3 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-brand-700"
-          />
-        </label>
-        {upload.isPending ? <span className="text-sm text-slate-500">Reading file…</span> : null}
-      </div>
+      {canWrite ? (
+        <div className="rounded-lg border border-line bg-surface px-5 py-4">
+          <SectionLabel className="mb-3">Add a document</SectionLabel>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-[200px_1fr]">
+            <Select
+              label="Type"
+              value={kind}
+              onChange={(event) => setKind(event.target.value as DocumentKind)}
+            >
+              {Object.values(DocumentKind).map((value) => (
+                <option key={value} value={value}>
+                  {kindLabels[value]}
+                </option>
+              ))}
+            </Select>
+            <FileDrop
+              accept=".pdf,.docx,.txt,.md"
+              hint="PDF, Word, text or Markdown, up to 20 MB. The text is read straight away."
+              busy={upload.isPending}
+              busyLabel="Uploading and reading the file"
+              onFile={(file) => upload.mutate(file)}
+            />
+          </div>
+        </div>
+      ) : null}
 
       {documents.isPending ? (
-        <p className="text-slate-500">Loading documents…</p>
+        <div className="space-y-px overflow-hidden rounded-lg border border-line bg-surface">
+          {[0, 1, 2].map((row) => (
+            <div key={row} className="flex items-center gap-3 px-4 py-4">
+              <Skeleton className="size-9" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-3.5 w-1/3" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : documents.data?.length ? (
-        <ul className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+        <ul className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">
           {documents.data.map((doc) => (
-            <li key={doc.id} className="flex items-center justify-between gap-3 px-4 py-3">
-              <div className="min-w-0">
-                <div className="truncate font-medium">{doc.fileName}</div>
-                <div className="text-sm text-slate-500">
+            <li key={doc.id} className="flex items-center gap-3 px-4 py-3.5 hover:bg-paper">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-paper-dark text-ink-400">
+                <FileText className="size-[18px]" strokeWidth={1.6} />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[14.5px] text-ink-900">{doc.fileName}</div>
+                <div className="tabular mt-0.5 text-[12.5px] text-ink-400">
                   {kindLabels[doc.kind]} · {Math.max(1, Math.round(doc.sizeBytes / 1024))} KB ·{' '}
                   {doc.textLength.toLocaleString()} characters read
                 </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <span className={`rounded-full px-2.5 py-1 text-xs ${statusStyles[doc.status]}`}>
-                  {doc.status}
+              <Badge tone={statusTones[doc.status]}>{statusLabels[doc.status]}</Badge>
+              {!canWrite ? null : confirming === doc.id ? (
+                <span className="flex shrink-0 items-center gap-2 text-[13px]">
+                  <button
+                    type="button"
+                    onClick={() => remove.mutate(doc.id)}
+                    disabled={remove.isPending}
+                    className="font-medium text-flag-red hover:underline"
+                  >
+                    {remove.isPending ? 'Deleting…' : 'Delete'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirming(null)}
+                    className="text-ink-400 hover:text-ink-900"
+                  >
+                    Keep
+                  </button>
                 </span>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => remove.mutate(doc.id)}
-                  className="text-sm text-slate-500 hover:text-red-600"
+                  onClick={() => setConfirming(doc.id)}
+                  className="shrink-0 text-[13px] text-ink-400 hover:text-flag-red"
                 >
                   Delete
                 </button>
-              </div>
+              )}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-slate-500">No documents uploaded yet.</p>
+        <EmptyState icon={FileText} title="No documents yet">
+          Upload a past proposal or an annual report — drafts will then reuse your own wording and
+          figures.
+        </EmptyState>
       )}
     </div>
   );

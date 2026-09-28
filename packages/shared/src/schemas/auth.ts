@@ -12,3 +12,36 @@ export const loginSchema = z.object({
   password: z.string().min(1),
 });
 export type LoginInput = z.infer<typeof loginSchema>;
+
+export const updateAccountSchema = z.object({
+  name: z.string().trim().min(2).max(100),
+});
+export type UpdateAccountInput = z.infer<typeof updateAccountSchema>;
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1),
+    newPassword: z.string().min(8).max(128),
+  })
+  .refine((value) => value.currentPassword !== value.newPassword, {
+    message: 'The new password must be different from the current one',
+    path: ['newPassword'],
+  });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const changeEmailSchema = z.object({
+  email: z.email().max(255),
+  currentPassword: z.string().min(1),
+});
+export type ChangeEmailInput = z.infer<typeof changeEmailSchema>;
+
+export const forgotPasswordSchema = z.object({
+  email: z.email().max(255),
+});
+export type ForgotPasswordInput = z.infer<typeof forgotPasswordSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(20).max(200),
+  password: z.string().min(8).max(128),
+});
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
